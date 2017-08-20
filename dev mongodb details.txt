@@ -1,0 +1,11 @@
+To connect using the mongo shell:
+
+mongo ds149743.mlab.com:49743/aaplapp -u <dbuser> -p <dbpassword>
+
+To connect using a driver via the standard MongoDB URI (what's this?):
+
+mongodb://<dbuser>:<dbpassword>@ds149743.mlab.com:49743/aaplapp
+
+Database admin user
+name: aapladmin
+pass: <other pass>

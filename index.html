@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" type="text/css" href="views/css/style.css" media="screen" />
+	<title>Appraisal Photo</title>
+</head>
+
+<!-- photo/image is displayed.-->
+<body>
+<div id="container" align="center">
+	<img src="http://localhost:8081/uploads/imgUploader-1502131471777.jpg">
+</div>
+
+<script type="text/javascript">
+(function() {
+
+var img = document.getElementById('container').firstChild;
+img.onload = function() {
+    if(img.height > img.width) {
+        img.height = '100%';
+        img.width = 'auto';
+    }
+};
+
+}());
+</script>
+
+</body> 
+</html>

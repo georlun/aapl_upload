@@ -1,0 +1,27 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<title>View Photos of Appraisal</title>
+</head>
+
+<!-- The information between the BODY and /BODY tags is displayed.-->
+<body>
+<h1>Here are the photos of the following incident appraisal</h1>
+<p><b>Incident Details</b>:</p>
+<ul>
+<li>Registration Number: <b><%= key %></b></li>
+<li>Date of Loss: <b><%= date %></b></li>
+<li>Time of Loss: <%= time %></li>
+<li>Claim Type: <%= type %></li>
+</ul>
+<span><b>Number of Appraisal Photos:&nbsp;</b><%= pnum %></span>
+<ul>
+<!-- loop over images and render them -->
+  <% files.forEach((file) => { %>
+    <li><a href="/display?image=<%= key %>/<%= date %>/<%= file %>" target="_blank"><%= file %></li>
+  <% }) %>
+</ul>
+</body> 
+</html>

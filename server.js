@@ -76,7 +76,7 @@ var storage = multer.diskStorage({ //multers disk storage settings
 		//console.log(req.body);
 		var key=req.body.value1;
 		var date=req.body.value2;
-		var dest_dir = user_data + key + "/" + date;
+		var dest_dir = user_data + "/" + key + "/" + date;
 		//console.log("upload dest dir = " + dest_dir);
         cb(null, dest_dir);
     },

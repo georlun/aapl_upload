@@ -180,7 +180,7 @@ module.exports = function(app, passport) {
 		//console.log("post key = "+key+", loss date is "+date+", time is "+time+", type is "+type_desc);
 		
 		//get the list of jpg files in the image dir
-		var imageDir = user_data + key + "/" + date;
+		var imageDir = user_data + "/" + key + "/" + date;
 		//console.log("photo dir = " + imageDir);
 		fs.readdir(imageDir, function (err, list) {
 			if (err) {
@@ -276,7 +276,7 @@ module.exports = function(app, passport) {
 							}
 						});
 		// create corresponding user data directory
-		var case_dir = user_data + key;
+		var case_dir = user_data + "/" + key;
 		//console.log("first dest dir = " + case_dir);
 		if (!fs.existsSync(case_dir)){
 				fs.mkdirSync(case_dir, function(err){

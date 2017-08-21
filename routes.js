@@ -211,10 +211,10 @@ module.exports = function(app, passport) {
     // =================
 	app.get('/display', function (req, res) {
 		var f_locn = req.query.image;
-		var hostUrl = req.protocol + '://' + req.get('host');
+		//var hostUrl = req.protocol + '://' + req.get('host');
 		//console.log(hostUrl);
-		f_locn = hostUrl + "/photo/" + f_locn;
-		//console.log("image location: " + f_locn);
+		var d_file = path.join(user_data, '/', f_locn);
+		console.log("image location: " + d_file);
 	/*
 		ejs.renderFile(__dirname + "/views/displayImage.ejs", {locn: f_locn}, {},
 			function(err, result) {
@@ -239,7 +239,8 @@ module.exports = function(app, passport) {
 			}
 		});
 	*/
-		res.render('displayImage', {locn: f_locn});
+		//res.render('displayImage', {locn: f_locn});
+		res.sendFile(d_file);
 	});
 	
 	// ==================

@@ -7,7 +7,7 @@
 //	For AAPL Application
 //
 'use strict';
-var nPort = process.env.PORT || 8081;
+var nPort = process.env.PORT || 8080;
 var express = require('express');
 var app = express();
 var multer = require('multer');
@@ -37,10 +37,10 @@ mongoose.connect(configDB.url, {
 });
 
 // mongoDB debugger
-var mongodb = require('mongodb');
-var mongoDebug = require('node-mongodb-debug-log');
+//var mongodb = require('mongodb');
+//var mongoDebug = require('node-mongodb-debug-log');
 /* Using the default values */
-mongoDebug.install(mongodb);
+//mongoDebug.install(mongodb);
 
 /** Serving from the same express Server
 No cors required */

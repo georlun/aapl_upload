@@ -4,7 +4,7 @@ var path = require('path');
 var bcrypt   = require('bcrypt-nodejs');
 var User = require('./models/user');
 var Incident = require('./models/incident');
-var user_data = './user_data/';
+var user_data = './userdata/';
 
 module.exports = function(app, passport) {
 	

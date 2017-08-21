@@ -18,7 +18,7 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var user_data = './user_data/';
+var user_data = './userdata/';
 
 app.use(logger('dev'));
 app.use(function (req, res, next) { //allow cross origin requests

@@ -4,7 +4,7 @@ var path = require('path');
 var bcrypt   = require('bcrypt-nodejs');
 var User = require('./models/user');
 var Incident = require('./models/incident');
-var user_data = './userdata/';
+var user_data = process.env.USERDATA;
 
 module.exports = function(app, passport) {
 	
@@ -213,8 +213,8 @@ module.exports = function(app, passport) {
 		var f_locn = req.query.image;
 		var hostUrl = req.protocol + '://' + req.get('host');
 		//console.log(hostUrl);
-		f_locn = hostUrl + "/" + user_data + f_locn;
-		//console.log(f_locn);
+		f_locn = hostUrl + "/photo/" + f_locn;
+		//console.log("image location: " + f_locn);
 	/*
 		ejs.renderFile(__dirname + "/views/displayImage.ejs", {locn: f_locn}, {},
 			function(err, result) {

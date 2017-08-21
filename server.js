@@ -18,7 +18,8 @@ var logger = require('morgan');
 var mongoose = require('mongoose');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var user_data = './userdata/';
+//SET to use environment variable for path of the user data directory storing images 
+var user_data = process.env.USERDATA;
 
 app.use(logger('dev'));
 app.use(function (req, res, next) { //allow cross origin requests

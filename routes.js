@@ -1,10 +1,15 @@
 // routes.js
 var fs = require('fs');
 var path = require('path');
-var bcrypt   = require('bcrypt-nodejs');
+var bcrypt = require('bcrypt-nodejs');
+var request = require('request');
+var async = require('async');
+var open = require('opn');            // open is using npm opn()
 var User = require('./models/user');
 var Incident = require('./models/incident');
+//var downloader = require('image-downloader');  // No need to use downloader plugin
 var user_data = process.env.USERDATA;
+var download_path = process.env.DOWNLOADPATH;
 
 module.exports = function(app, passport) {
 	
@@ -23,7 +28,25 @@ module.exports = function(app, passport) {
 	//redirect home page to perform authentication requirements
 	app.get('/home', isLoggedIn, function (req, res) {
 		//console.log("access home...");
-		res.sendFile(__dirname + "/" + "index.html");
+		//console.log("authenicated login user: ", req.user.local.email);
+		res.sendFile(__dirname + "/" + "home.html");
+	});
+	
+	// ==============
+    // LOGIN USER ===
+    // ==============
+	//get the login user name after authentication
+	app.get('/loginuser', function (req, res) {
+		//console.log("home page login user: ", req.user.local.email);
+		// going to pass the logged in username to the html via json
+		if (req.user === undefined) {
+			// The user is not logged in
+			res.json({});
+		} else {
+			res.json({
+				username: req.user.local.email
+			});
+		};
 	});
 
     // =============
@@ -93,7 +116,6 @@ module.exports = function(app, passport) {
 					newUser.save(function(err) {
 						if (err) {
 							console.log('Error in Saving user: '+err);
-							throw err;
 						}
 					});
 
@@ -171,6 +193,7 @@ module.exports = function(app, passport) {
 		//var authy = req.query.au;
 		var type_desc, pnum;
 		var fileType = '.jpg',
+			file_fp,
 			files = [], i;
 		
 		//console.log("auth param = "+authy);
@@ -181,6 +204,8 @@ module.exports = function(app, passport) {
 		
 		//get the list of jpg files in the image dir
 		var imageDir = user_data + "/" + key + "/" + date;
+		var hostUrl = req.protocol + '://' + req.get('host');
+		var fs_url = hostUrl + '/apphoto/' + key + '/' + date;
 		//console.log("photo dir = " + imageDir);
 		fs.readdir(imageDir, function (err, list) {
 			if (err) {
@@ -188,7 +213,8 @@ module.exports = function(app, passport) {
 			};
 			for(i=0; i<list.length; i++) {
 				if(path.extname(list[i]) === fileType) {
-					files.push(list[i]); //store the file name into the array files
+					file_fp = fs_url + "/" + list[i];
+					files.push(file_fp); //store the file name into the array files
 				}
 			}
 		});
@@ -201,8 +227,49 @@ module.exports = function(app, passport) {
 			//for(i=0; i<files.length; i++) {
 			//	console.log(files[i]);
 			//};
-			res.render('viewcase', {key: key, date: date, time: time, type: type_desc, pnum: pnum, files: files});
+			res.render('viewcase', {key: key, date: date, time: time, type: type_desc, pnum: pnum, hosturl: hostUrl, files: files});
 			//res.sendFile(__dirname + "/" + "viewcase.html");
+		}, 1000);
+	});
+	
+	// =================
+    // GET PHOTO LIST ==
+    // =================
+    // we will want this protected so you have to be logged in to visit
+    // we will use route middleware to verify this (the isLoggedIn function)
+	app.get('/photolist', isLoggedIn, function (req, res) {
+		var key = req.query.rn;
+		var date = req.query.dd;
+		var fileType = '.jpg',
+			file_fp,
+			files = [], i;
+
+		//get the list of jpg files in the image dir
+		var hostUrl = req.protocol + '://' + req.get('host');
+		var imageDir = user_data + "/" + key + "/" + date;
+		var fs_url = hostUrl + '/apphoto/' + key + '/' + date;
+		//console.log("photo dir = " + imageDir);
+		fs.readdir(imageDir, function (err, list) {
+			if (err) {
+				return console.error(err);
+			};
+			for(i=0; i<list.length; i++) {
+				if(path.extname(list[i]) === fileType) {
+					file_fp = fs_url + "/" + list[i];
+					files.push(file_fp); //store the file name into the array files
+				}
+			}
+		});
+	
+		// need to set timeout to delay execution to allow for directory get
+		setTimeout(function() {
+			if (files.length > 0) {
+				// send the list of all photos
+				res.render('viewplist', {key: key, hosturl: hostUrl, files: files});
+			}
+			else {
+				res.end("No photo to display for this appraisal incident...");
+			}
 		}, 1000);
 	});
 	
@@ -253,29 +320,59 @@ module.exports = function(app, passport) {
 		var type=req.body.type;
 		var location=req.body.location;
 		var owner=req.body.owner;
-		var return_str = "post key = "+key+", loss date is "+date+", time is "+time+", type is "+type+", location is "+location+", creator is "+owner;
+		var recpt=req.body.recpt;
+		var sndate=req.body.sndate;
+		var return_str = "post key = "+key+", loss date is "+date+", time is "+time+", type is "+type+", location is "+location+", creator is "+owner+", recipient is "+recpt+", send date is "+sndate;
 		var type_desc;
 		
 		if (type == 1) { type_desc = "Owner Damage"; } else
 		if (type == 2) { type_desc = "3rd Party Vehicle Damage"; };
 		
-		// create database entry for this incident
-		var newIncident = new Incident();
-		// set the attributes
-		newIncident.regnum = key;
-		newIncident.date = date;
-		newIncident.time = time;
-		newIncident.claimtype = type_desc;
-		newIncident.location = location;
-		newIncident.sender = owner;
-		newIncident.ins_comp = "";
-		// save the incident
-		newIncident.save(function(err) {
-							if (err) {
-								console.log('Error in Saving incident: '+err);
-								throw err;
-							}
-						});
+		// create database entry for this incident if it's not a duplicate
+        Incident.findOne({ 'regnum' :  key, 'date' : date },  //query
+			function(err, incdt) {		//callback function
+				// if there are any errors, return the error
+				if (err) {
+					console.log('Error in finding Incident: '+err);
+				}
+				
+				if (incdt) {
+					//found entry, should not insert new one but update with info from the new record
+					console.log("Found entry = "+incdt.regnum);
+					incdt.time = time;
+					incdt.claimtype = type_desc;
+					incdt.location = location;
+					incdt.sender = owner;
+					incdt.ins_comp = recpt;
+					incdt.senddate = sndate;
+					incdt.save(function(err) {
+						if (err) {
+							console.log('Error in Update incident: '+err);
+						}
+					});
+					
+				}
+				else {
+					// insert new record
+					var newIncident = new Incident();
+					// set the attributes
+					newIncident.regnum = key;
+					newIncident.date = date;
+					newIncident.time = time;
+					newIncident.claimtype = type_desc;
+					newIncident.location = location;
+					newIncident.sender = owner;
+					newIncident.ins_comp = recpt;
+					newIncident.senddate = sndate;
+					// save the incident
+					newIncident.save(function(err) {
+						if (err) {
+							console.log('Error in Saving incident: '+err);
+							return res.end("error = " + err);
+						}
+					});
+				}
+		});
 		// create corresponding user data directory
 		var case_dir = user_data + "/" + key;
 		//console.log("first dest dir = " + case_dir);
@@ -300,9 +397,143 @@ module.exports = function(app, passport) {
 							});
 		};
 		console.log(return_str);
-		res.end(return_str);
+		res.end();
 	});
+	
+	// ==========================
+    // GET INCIDENT DETAILS =====
+    // ==========================
+	app.get('/incidentDtl', isLoggedIn, function(req,res){
+		//Added parameter - if Admin login, get all incidents; otherwise, just get those entries belong to the login user
+		var user = req.query.ur;
+		if (user == "admin") {
+			Incident.find(function (err, incdt) {	//query all entries
+			// if there are any errors, return the error
+				if (err) {
+					// Note that this error doesn't mean nothing was found,
+					// it means the database had an error while searching, hence the 500 status
+					console.log('Error in finding Incident: '+err);
+					res.status(500).send(err)
+				}
+				
+				if (incdt) {
+					// send the list of all incidents
+					res.send(incdt);
+				}
 
+			})
+		}
+		else { // find specific user records
+			Incident.find({"ins_comp":user}, function (err, incdt) {	//query all entries
+			// if there are any errors, return the error
+				if (err) {
+					// Note that this error doesn't mean nothing was found,
+					// it means the database had an error while searching, hence the 500 status
+					console.log('Error in finding Incident: '+err);
+					res.status(500).send(err)
+				}
+				//console.log('retrieved = '+JSON.stringify(incdt)+', length = '+incdt.length);
+				if (incdt) {
+					// send the list of all incidents
+					res.send(incdt);
+				}
+
+			})
+		}
+		
+	});
+	
+	// ==========================
+    // DAILY PHOTO DOWNLOAD =====
+    // ==========================
+    // AAPL Admin download gathers all selected date photos to response to client and then download individually to their own server
+	app.get('/aapldownload', isLoggedIn, function (req, res) {
+		var date = req.query.dd;
+		var hostUrl = req.protocol + '://' + req.get('host');
+		var file_fp;
+		var f_selected = [];
+		
+		Incident.find({ 'date' : date },  //query find all date incidents
+			function(err, incdt) {		//callback function
+				// if there are any errors, return the error
+				if (err) {
+					// it means the database had an error while searching, hence the 500 status
+					res.status(500).send(err)
+					//console.log('Error in finding Incident: '+err);
+				}
+				
+				if (incdt.length > 0) {
+					var p_subdir, p_dir, dl_url, dest_dir;
+					//get all photos of the incidents for the specific date
+					//console.log('Entries found: '+incdt.length);
+					async.forEach(incdt, function (incdt, callback1) {
+						var rn = incdt.regnum;
+						var dt = incdt.date;
+						//console.log('regnum: ' + rn);
+						//console.log('date: ' + dt);
+						//console.log('time: ' + incdt.time);
+						//get the corresponding photos from the directory
+						p_subdir = incdt.regnum + '/' + incdt.date;
+						p_dir = path.join(user_data, '/', p_subdir);
+						//console.log("path = ", p_dir);
+						fs.readdir(p_dir, function (err, list) {
+							if (err) {
+								// it means the directory read had an error while fetching, hence the 500 status
+								res.status(500).send(err)
+							};
+							async.forEach(list, function (list, callback2) {
+								//write the get url for express download to destined directory
+								//dl_url = hostUrl + '/download?rn=' + rn + '&dd=' + dt + '&ff=' + list;
+								file_fp = 'rn=' + rn + '&dd=' + dt + '&ff=' + list;
+								f_selected.push(file_fp); //store the download file parameters into the array files
+								//console.log('download paramter = ' + file_fp);
+								//open(dl_url);
+								callback2();
+							}, callback1)
+						});
+					}, function (err) {
+						if (err) {
+							console.log('Error in getting download photos: '+err);
+							res.status(500).send(err)
+						}
+						else {
+							//for (var i=0; i<f_selected.length; i++) {
+							//	console.log(f_selected[i]);
+							//}
+							return res.send(f_selected);
+						}
+					});
+				}
+				else {
+					return res.send(f_selected);
+				}
+			
+			}
+		);
+	});
+	
+	// ==========================
+    // SINGLE PHOTO DOWNLOAD ====
+    // ==========================
+    // Download a particular photo as specified in the parameters
+	app.get('/download', function (req, res) {
+		var key = req.query.rn;
+		var date = req.query.dd;
+		var image = req.query.ff;
+		var dest, ff_name, ff_file, fs_url;
+		var hostUrl = req.protocol + '://' + req.get('host');
+			
+		ff_name = date + '-' + key + '-' + image;
+		dest = path.join(download_path, '/', ff_name);
+		//console.log("dest file = ", dest);
+		ff_file = fs.createWriteStream(dest);
+		//fs_name = path.basename(image);
+		fs_url = hostUrl + '/apphoto/' + key + '/' + date + '/' + image;
+		//console.log("image url = " + fs_url);
+		
+		request(fs_url).pipe(ff_file);
+		res.end("file " + ff_name + " download completed!..");
+	});
 
     // =============
     // LOGOUT ======

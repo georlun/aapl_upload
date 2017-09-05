@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" type="text/css" href="css/bootstrap.min.css"> <!-- load bootstrap css -->
+    <link rel="stylesheet" type="text/css" href="css/font-awesome.min.css"> <!-- load fontawesome -->
+	<title>Transaction Log</title>
+	<script src="../scripts/angular.min.js"></script>
+	<script src="../scripts/smart-table.min.js"></script>
+	<script src="../app.js" type="text/javascript"></script>
+</head>
+
+<!-- Use Smart-table to display incident details in tabular form -->
+<body ng-app="dtlapp" ng-controller="auditCtrl" data-ng-init="init()">
+<br>
+<div style="padding-left: 15px;">
+			<h2>Appraisal Transaction Log</h2>
+</div>
+<br>
+<div ng-show="!isEmpty">
+<table st-table="displayedCollection" st-safe-src="incdata" table-title="Incidents List" class="table table-striped">
+	<thead>
+	<tr>
+		<th st-sort-default="true" st-sort="regnum">Vechicle Number</th>
+		<th st-sort="date">Date of Loss</th>
+		<th>Time of Loss</th>
+		<th>Claim Type</th>
+		<th>Location</th>
+		<th st-sort="sender">Sender Id</th>
+		<th st-sort="ins_comp">Recipient</th>
+		<th>Send Date</th>
+	</tr>
+	<tr>
+		<th colspan="5"><input st-search="" class="form-control" placeholder="Vechicle Number search ..." type="text"/></th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr ng-repeat="row in displayedCollection">
+		<td>{{row.regnum}}</td>
+		<td>{{row.date}}</td>
+		<td>{{row.time}}</td>
+		<td>{{row.claimtype}}</td>
+		<td>{{row.location}}</td>
+		<td>{{row.sender}}</td>
+		<td>{{row.ins_comp}}</td>
+		<td>{{row.senddate}}</td>
+		<td>
+			<button type="button" ng-click="show_thumbnail(row)" class="btn btn-sm btn-info">
+				Photo
+			</button>
+		</td>
+	</tr>
+	</tbody>
+</table>
+</div>
+<div ng-show="isEmpty" style="padding-left: 15px;">
+	<h3 class="text-primary">There are no incident appraisals belonging to this login user, nothing to list...</h3>
+</div>
+</body> 
+</html>

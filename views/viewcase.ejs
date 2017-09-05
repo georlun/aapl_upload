@@ -3,24 +3,42 @@
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<meta charset="utf-8" />
-	<title>View Photos of Appraisal</title>
+	<link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/bootstrap.min.css"> <!-- load bootstrap css -->
+    <link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/font-awesome.min.css"> <!-- load fontawesome -->
+	<title>View Appraisal Photos</title>
+	<script src="<%= hosturl %>/scripts/bootstrap.min.js"></script>
 </head>
 
 <!-- The information between the BODY and /BODY tags is displayed.-->
 <body>
-<h1>Here are the photos of the following incident appraisal</h1>
-<p><b>Incident Details</b>:</p>
+<div style="padding-left: 20px;">
+<h2>Here are the photos of the following incident appraisal</h2>
+</div>
+<br>
+<div style="padding-left: 40px;">
+<p><h4>Incident Details</h4></p>
 <ul>
 <li>Registration Number: <b><%= key %></b></li>
 <li>Date of Loss: <b><%= date %></b></li>
 <li>Time of Loss: <%= time %></li>
 <li>Claim Type: <%= type %></li>
 </ul>
-<span><b>Number of Appraisal Photos:&nbsp;</b><%= pnum %></span>
+</div>
+<br>
+<div style="padding-left: 40px;">
+<span><h4>Number of Appraisal Photos:&nbsp;<b><%= pnum %></b></h4></span>
+</div>
+
 <ul>
 <!-- loop over images and render them -->
   <% files.forEach((file) => { %>
-    <li><a href="/display?image=<%= key %>/<%= date %>/<%= file %>" target="_blank"><%= file %></li>
+   <!--<div id="container"> -->
+   <div class="col-sm-8">
+        <div class="thumbnail">
+		<img src = <%= file %> alt = "photo placeholder thumbnail">
+		</div>
+   </div>
+   
   <% }) %>
 </ul>
 </body> 

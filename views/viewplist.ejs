@@ -1,0 +1,33 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/bootstrap.min.css"> <!-- load bootstrap css -->
+    <link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/font-awesome.min.css"> <!-- load fontawesome -->
+	<title>View Appraisal Photos</title>
+	<script src="<%= hosturl %>/scripts/bootstrap.min.js"></script>
+</head>
+
+<!-- The information between the BODY and /BODY tags is displayed.-->
+<body>
+<div style="padding-left: 40px;">
+<span><h1>Here are the list of photos for&nbsp;<%= key %></h1></span>
+</div>
+
+<ul>
+<!-- loop over images and render them -->
+  <% files.forEach((file) => { %>
+   <!--<div id="container"> -->
+   <div class="col-sm-8">
+        <div class="thumbnail">
+		<img src = <%= file %> alt = "photo placeholder thumbnail">
+		</div>
+   </div>
+   
+  <% }) %>
+  
+</ul>
+
+</body> 
+</html>

@@ -10,7 +10,8 @@ var incidentSchema = mongoose.Schema({
 		claimtype	: String,
         location	: String,
 		sender		: String,
-		ins_comp	: String
+		ins_comp	: String,
+		senddate	: String
 
 });
 

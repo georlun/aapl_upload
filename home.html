@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" type="text/css" href="views/css/bootstrap.min.css"> <!-- load bootstrap css -->
+    <link rel="stylesheet" type="text/css" href="views/css/font-awesome.min.css"> <!-- load fontawesome -->
+	<link rel="stylesheet" type="text/css" href="views/css/style2.css">
+	<link rel="stylesheet" type="text/css" href="views/css/angular-datepicker.css">
+	<title>Appraisal Associates Home</title>
+	<script src="scripts/angular.min.js"></script>
+	<script src="scripts/angular-datepicker.js"></script>
+	<script src="app.js" type="text/javascript"></script>
+</head>
+
+<style>
+body {
+		background-image: url("views/images/background/crashcar3.jpg");
+		background-repeat: no-repeat;
+		background-position: right top;
+		margin-right: 900px;
+}
+</style>
+
+<!-- Site under construction is displayed.-->
+<body ng-app="aaplwebapp" ng-controller="userCtrl">
+<br>
+<div align="center">
+			<h2>Appraisal Associates Pte Ltd.</h2>
+			<br><br>
+			<h2>Customer Portal</h2>
+			<!--
+			<h2>Under Construction...</h2>
+			-->
+			<br>
+</div>
+<div class="col-sm-4 col-sm-offset-3" style="white-space:nowrap">
+	<label for="loginUr">User:</label>
+    <input type="text" id="loginUr" style="border: none; border-color: transparent;" readonly >
+</div>
+<br>
+
+<div ng-show="isAdmin(loginUser)">
+<div class="col-sm-4 col-sm-offset-3" style="white-space:nowrap">
+	<label for="dldate">Photo Download for Date:</label>
+	<datepicker date-format="dd-MM-yyyy">
+		<input id="dldate" ng-model="dateString" type="text"/>
+	</datepicker>
+</div>
+<br><br><br>
+<div class="col-sm-4 col-sm-offset-4 input-group" ng-controller="downloadCtrl">
+	<button class="btn btn-block btn-lg btn-primary" ng-click="download_photo(dateString)">Download</button>
+</div>
+<br>
+<div class="col-sm-4 col-sm-offset-4 input-group" ng-controller="newuserCtrl">
+	<button class="btn btn-block btn-lg btn-success" ng-click="user_signup()">New User</button>
+</div>
+</div>
+<br>
+<div class="col-sm-4 col-sm-offset-4 input-group" ng-controller="incidentCtrl">
+	<button class="btn btn-block btn-lg btn-info" ng-click="show_table()">Appraisals</button>
+</div>
+<br>
+<form action="/logout">
+<div class="col-sm-4 col-sm-offset-4">
+	<button type="submit" class="btn btn-block btn-lg btn-warning">Log Off</button>
+</div>
+</form>
+</body> 
+</html>

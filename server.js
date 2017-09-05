@@ -48,6 +48,7 @@ No cors required */
 app.set('view engine', 'ejs');  //tell Express we're using EJS
 //app.set('views', __dirname + '/views');  //set path to *.ejs files
 app.use(express.static(__dirname));
+app.use('/apphoto', express.static(user_data)); // mount the photo repository root directory
 app.use(cookieParser()); // read cookies (needed for auth)
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -83,6 +84,8 @@ var storage = multer.diskStorage({ //multers disk storage settings
     filename: function (req, file, cb) {
         var datetimestamp = Date.now();
         cb(null, file.fieldname + '-' + datetimestamp + '.' + file.originalname.split('.')[file.originalname.split('.').length - 1]);
+		//console.log("req object = "+JSON.stringify(req.body));
+		//console.log("file object = "+JSON.stringify(file));
     }
 });
 var upload = multer({ //multer settings

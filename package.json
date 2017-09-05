@@ -4,6 +4,9 @@
   "description": "aapl_upload",
   "main": "server.js",
   "dependencies": {
+    "angular-smart-table": "^2.1.8",
+    "angularjs-datepicker": "^2.1.23",
+    "async": "^2.5.0",
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.17.2",
     "connect-flash": "^0.1.1",
@@ -14,8 +17,10 @@
     "mongoose": "^4.11.7",
     "morgan": "^1.8.2",
     "multer": "^1.3.0",
+    "opn": "^5.1.0",
     "passport": "^0.4.0",
-    "passport-local": "^1.0.0"
+    "passport-local": "^1.0.0",
+    "request": "^2.81.0"
   },
   "author": {
     "name": "georlun"

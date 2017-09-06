@@ -7,7 +7,7 @@ var async = require('async');
 var open = require('opn');            // open is using npm opn()
 var User = require('./models/user');
 var Incident = require('./models/incident');
-//var downloader = require('image-downloader');  // No need to use downloader plugin
+var downloader = require('image-downloader');  // use downloader plugin
 var user_data = process.env.USERDATA;
 var download_path = process.env.DOWNLOADPATH;
 
@@ -458,7 +458,7 @@ module.exports = function(app, passport) {
 				// if there are any errors, return the error
 				if (err) {
 					// it means the database had an error while searching, hence the 500 status
-					res.status(500).send(err)
+					return res.status(500).send(err)
 					//console.log('Error in finding Incident: '+err);
 				}
 				
@@ -479,7 +479,7 @@ module.exports = function(app, passport) {
 						fs.readdir(p_dir, function (err, list) {
 							if (err) {
 								// it means the directory read had an error while fetching, hence the 500 status
-								res.status(500).send(err)
+								return res.status(500).send("No photos found with reference to DB record")
 							};
 							async.forEach(list, function (list, callback2) {
 								//write the get url for express download to destined directory
@@ -494,7 +494,7 @@ module.exports = function(app, passport) {
 					}, function (err) {
 						if (err) {
 							console.log('Error in getting download photos: '+err);
-							res.status(500).send(err)
+							return res.status(500).send("Error in getting download photos")
 						}
 						else {
 							//for (var i=0; i<f_selected.length; i++) {
@@ -526,13 +526,26 @@ module.exports = function(app, passport) {
 		ff_name = date + '-' + key + '-' + image;
 		dest = path.join(download_path, '/', ff_name);
 		//console.log("dest file = ", dest);
-		ff_file = fs.createWriteStream(dest);
-		//fs_name = path.basename(image);
 		fs_url = hostUrl + '/apphoto/' + key + '/' + date + '/' + image;
 		//console.log("image url = " + fs_url);
-		
+	/*
+		ff_file = fs.createWriteStream(dest);
 		request(fs_url).pipe(ff_file);
 		res.end("file " + ff_name + " download completed!..");
+	*/
+		//use image-downloader plugin
+		var options = {
+				url: fs_url,
+				dest: dest  // Save to local harddisk directory with filename  
+		};
+		downloader.image(options)
+			.then( function ( {filename, image} ) {
+				//console.log('File saved to ', filename);
+				return res.end("file saved to " + filename + ", download completed!..");
+			}).catch( function (err) {
+					return res.status(500).send(err)
+				});
+
 	});
 
     // =============

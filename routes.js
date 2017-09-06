@@ -539,9 +539,9 @@ module.exports = function(app, passport) {
 				dest: dest  // Save to local harddisk directory with filename  
 		};
 		downloader.image(options)
-			.then( function ( {filename, image} ) {
-				//console.log('File saved to ', filename);
-				return res.end("file saved to " + filename + ", download completed!..");
+			.then( function ( file ) {
+				//console.log('File saved to ', JSON.stringify(file.filename));
+				return res.end("file saved to " + JSON.stringify(file.filename) + ", download completed!..");
 			}).catch( function (err) {
 					return res.status(500).send(err)
 				});

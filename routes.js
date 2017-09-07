@@ -7,7 +7,6 @@ var async = require('async');
 var open = require('opn');            // open is using npm opn()
 var User = require('./models/user');
 var Incident = require('./models/incident');
-var downloader = require('image-downloader');  // use downloader plugin
 var user_data = process.env.USERDATA;
 var download_path = process.env.DOWNLOADPATH;
 
@@ -520,7 +519,7 @@ module.exports = function(app, passport) {
 		var key = req.query.rn;
 		var date = req.query.dd;
 		var image = req.query.ff;
-		var dest, ff_name, ff_file, fs_url;
+		var dest, ff_name, fs_url;
 		var hostUrl = req.protocol + '://' + req.get('host');
 			
 		ff_name = date + '-' + key + '-' + image;
@@ -529,24 +528,19 @@ module.exports = function(app, passport) {
 		//console.log("dest file = ", dest);
 		fs_url = hostUrl + '/apphoto/' + key + '/' + date + '/' + image;
 		//console.log("image url = " + fs_url);
-	/*
-		ff_file = fs.createWriteStream(dest);
-		request(fs_url).pipe(ff_file);
-		res.end("file " + ff_name + " download completed!..");
-	*/
-		//use image-downloader plugin
-		var options = {
-				url: fs_url,
-				dest: dest  // Save to local harddisk directory with filename  
-		};
-		downloader.image(options)
-			.then( function ( file ) {
-				//console.log('File saved to ', JSON.stringify(file.filename));
-				return res.end("file saved to " + JSON.stringify(file.filename) + ", download completed!..");
-			}).catch( function (err) {
-					return res.status(500).send(err)
+	
+		request(fs_url)
+			.pipe(fs.createWriteStream(dest)
+					.on('error', function(err) {
+						console.log("write file error...");
+						res.end("write file error " + err);
+					})
+				)
+				.on('close', function () {
+					//console.log("write file close...");
+					res.end("file saved to " + dest + ", download completed!..");
 				});
-
+	
 	});
 
     // =============

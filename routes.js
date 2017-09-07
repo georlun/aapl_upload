@@ -524,7 +524,8 @@ module.exports = function(app, passport) {
 		var hostUrl = req.protocol + '://' + req.get('host');
 			
 		ff_name = date + '-' + key + '-' + image;
-		dest = path.join(download_path, '/', ff_name);
+		// dest = path.join(download_path, '/', ff_name);  // not to use path.join as we want to have linux based server download to windows dir
+		dest = download_path + '\\' + ff_name;
 		//console.log("dest file = ", dest);
 		fs_url = hostUrl + '/apphoto/' + key + '/' + date + '/' + image;
 		//console.log("image url = " + fs_url);

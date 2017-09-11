@@ -23,8 +23,8 @@ var user_data = process.env.USERDATA;
 
 app.use(logger('dev'));
 app.use(function (req, res, next) { //allow cross origin requests
-    res.setHeader("Access-Control-Allow-Methods", "POST, PUT, OPTIONS, DELETE, GET");
-    res.header("Access-Control-Allow-Origin", "http://localhost");
+    res.setHeader("Access-Control-Allow-Methods", "GET");
+    res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });

@@ -446,7 +446,7 @@ module.exports = function(app, passport) {
     // DAILY PHOTO DOWNLOAD =====
     // ==========================
     // AAPL Admin download gathers all selected date photos to response to client and then download individually to their own server
-	app.get('/aapldownload', isLoggedIn, function (req, res) {
+	app.get('/aapldownload', function (req, res) {
 		var date = req.query.dd;
 		var hostUrl = req.protocol + '://' + req.get('host');
 		var file_fp;

@@ -8,7 +8,6 @@ var open = require('opn');            // open is using npm opn()
 var User = require('./models/user');
 var Incident = require('./models/incident');
 var user_data = process.env.USERDATA;
-var download_path = process.env.DOWNLOADPATH;
 
 module.exports = function(app, passport) {
 	
@@ -510,7 +509,7 @@ module.exports = function(app, passport) {
 			}
 		);
 	});
-	
+/**		take out photo download from server
 	// ==========================
     // SINGLE PHOTO DOWNLOAD ====
     // ==========================
@@ -542,7 +541,7 @@ module.exports = function(app, passport) {
 				});
 	
 	});
-
+**/
     // =============
     // LOGOUT ======
     // =============

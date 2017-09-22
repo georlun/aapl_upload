@@ -4,6 +4,7 @@ var path = require('path');
 var bcrypt = require('bcrypt-nodejs');
 var request = require('request');
 var async = require('async');
+var generator = require('generate-password');
 var open = require('opn');            // open is using npm opn()
 var User = require('./models/user');
 var Incident = require('./models/incident');
@@ -69,18 +70,34 @@ module.exports = function(app, passport) {
     // SIGNUP ======
     // =============
     // show the signup form
-    app.get('/signup', function(req, res) {
+    app.get('/signup', isLoggedIn, function(req, res) {
         // render the page and pass in any flash data if it exists
         res.render('signup.ejs', { message: req.flash('signupMessage') });
     });
 
     // process the signup form
     app.post('/signup', 
-			passport.authenticate('local-signup', {
-				successRedirect : '/signup', // successfully registered
-				failureRedirect : '/signup', // redirect back to the signup page if there is an error
-				failureFlash : true // allow flash messages
-			})
+			function (req, res, next) {
+				//console.log("signup post req body = " + JSON.stringify(req.body));
+				//auto generate password for this user before authenticate
+				var password = generator.generate({
+									length: 8,
+									numbers: true,
+									symbols: false,
+									uppercase: true
+				});
+				//console.log("pass gen = "+password);
+				req.body.password = password;
+				passport.authenticate('local-signup', function(err, user, info) {
+					if (err) { 
+							console.log("local-signup: Error in user creation...");
+							return next(err);
+					}
+					else {
+							return res.redirect('/signup'); 
+					}
+				})(req, res, next);
+			}
 	);
 	
 	// ==================
@@ -108,7 +125,7 @@ module.exports = function(app, passport) {
 					// set the user's credentials
 					newUser.local.email = req.body.email;
 					newUser.local.password = bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(8), null);
-					newUser.local.company = "";
+					newUser.local.company = "Self Register User";
 
 					// save the user
 					newUser.save(function(err) {
@@ -125,6 +142,105 @@ module.exports = function(app, passport) {
 					redir_str = "/selfsign?ur=" + req.body.email + "&mess=Passwords do not match, please re-enter again&param=" + req.body.sinfo;
 					return res.redirect(redir_str);
 				}
+			}
+	);
+	
+	// ===================
+    // RESET PASSWORD ====
+    // ===================
+    // reset the password
+    app.get('/resetpass', isLoggedIn, function(req, res) {
+		var user = req.query.ur;
+		//console.log("user = "+user);
+        //auto generate password for this user before authenticate
+		var password = generator.generate({
+						length: 8,
+						numbers: true,
+						symbols: false,
+						uppercase: true
+		});
+		//console.log("pass gen = "+password);
+		User.findOne({ 'local.email' :  user }, function(err, user) {
+						// if there are any errors, return the error
+						if (err) {
+								console.log('Error in get user for password change: '+err);
+								return res.send(err);
+						};
+						if (user) {
+								user.local.password = bcrypt.hashSync(password, bcrypt.genSaltSync(8), null);
+								// save the user and keep the company info, update only the password
+								user.save(function(err) {
+									if (err) {
+										console.log('Error in Updating user: '+err);
+										return res.send(err);
+									}
+									else {
+											return res.send(password);
+										}
+								})
+						}
+		});
+    });
+	
+	// ===================
+    // PASSWORD CHANGE ===
+    // ===================
+    // show the password change form
+    app.get('/changepass', isLoggedIn, function(req, res) {
+		//console.log("user = "+req.query.ur);
+		//console.log("message = "+req.query.mess);
+        // render the page and pass in any flash data as page requires
+        res.render('chgpass.ejs', { message: req.query.mess, userm: req.query.ur });
+    });
+	
+	app.post('/changepass', 
+			function (req, res, next) {
+				var redir_str;
+				//console.log("passwd change post req body = " + JSON.stringify(req.body));
+				passport.authenticate('local-login', function(err, user, info) {
+					if (err) { 
+							console.log("local-login: Error in authenticate user for password change...");
+							return next(err);
+					}
+					else {
+						if (!user) {
+							redir_str = "/changepass?ur="+req.body.email+"&mess=Fail to authenticate, wrong old password for this user";
+							return res.redirect(redir_str);
+						};
+						// user old password authenticated
+						if (req.body.passwordN == req.body.passwordC) {
+							// new password confirmed, go on to update the record
+							//console.log('Update user: '+ req.body.email);
+							User.findOne({ 'local.email' :  req.body.email }, function(err, user) {
+									// if there are any errors, return the error
+									if (err) {
+											console.log('Error in get user for password change: '+err);
+											return next(err);
+									};
+									if (user) {
+										user.local.email = req.body.email;
+										user.local.password = bcrypt.hashSync(req.body.passwordN, bcrypt.genSaltSync(8), null);
+										//console.log("db comp = "+user.local.company);
+										// save the user and keep the company info, update only the password
+										user.save(function(err) {
+											if (err) {
+												console.log('Error in Updating user: '+err);
+												return next(err);
+											}
+											else {
+												redir_str = "/changepass?ur="+req.body.email+"&mess=Password successfully changed for this user";
+												return res.redirect(redir_str);
+											}
+										});
+									}
+							});
+						}
+						else {
+							redir_str = "/changepass?ur=" + req.body.email + "&mess=New Passwords do not match, please re-enter again";
+							return res.redirect(redir_str);
+						}
+					}
+				})(req, res, next);
 			}
 	);
 
@@ -207,7 +323,7 @@ module.exports = function(app, passport) {
 		//console.log("photo dir = " + imageDir);
 		fs.readdir(imageDir, function (err, list) {
 			if (err) {
-				return console.error(err);
+				return console.log(err);
 			};
 			for(i=0; i<list.length; i++) {
 				if(path.extname(list[i]) === fileType) {
@@ -249,7 +365,7 @@ module.exports = function(app, passport) {
 		//console.log("photo dir = " + imageDir);
 		fs.readdir(imageDir, function (err, list) {
 			if (err) {
-				return console.error(err);
+				return console.log(err);
 			};
 			for(i=0; i<list.length; i++) {
 				if(path.extname(list[i]) === fileType) {
@@ -377,10 +493,10 @@ module.exports = function(app, passport) {
 		if (!fs.existsSync(case_dir)){
 				fs.mkdirSync(case_dir, function(err){
 								if (err) {
-									console.error(err);
+									console.log(err);
 									return res.end("error = " + err);
 								}
-								console.log("Directory " + case_dir + " created successfully!");
+								//console.log("Directory " + case_dir + " created successfully!");
 							});
 		};
 		case_dir = case_dir + "/" + date;
@@ -388,13 +504,13 @@ module.exports = function(app, passport) {
 		if (!fs.existsSync(case_dir)){
 				fs.mkdirSync(case_dir, function(err){
 								if (err) {
-									console.error(err);
+									console.log(err);
 									return res.end("error = " + err);
 								}
-								console.log("Directory " + case_dir + " created successfully!");
+								//console.log("Directory " + case_dir + " created successfully!");
 							});
 		};
-		console.log(return_str);
+		//console.log(return_str);
 		res.end();
 	});
 	
@@ -439,6 +555,116 @@ module.exports = function(app, passport) {
 			})
 		}
 		
+	});
+	
+	// ===================
+    // DELETE INCIDENT ===
+    // ===================
+	app.get('/deleteincdt', isLoggedIn, function(req,res) {
+		var regnum = req.query.rn;
+		var date = req.query.dd;
+		var fileType = '.jpg',
+			file_fp, fs_dir, i;
+		//console.log("regnum = "+regnum+", date = "+date);
+		// find it out and remove!
+		Incident.findOneAndRemove({ 'regnum': regnum, 'date': date }, function(err, incident) {
+		//Incident.findOne({ 'regnum': regnum, 'date': date }, function(err, incident) {
+				// if there are any errors, return the error
+				if (err) {
+					console.log('Error in getting incident for removal: '+err);
+					return res.status(500).send(err);
+				};
+				if (incident) {
+					// successfully removed this incident
+					// proceed to delete all photos of this incident from the server
+					var imageDir = user_data + "/" + regnum + "/" + date;
+					fs_dir = path.join(user_data, '/', regnum, '/', date);
+					fs.readdir(imageDir, function (err, list) {
+							if (err) {
+								return console.log(err);
+							};
+							for(i=0; i<list.length; i++) {
+								if(path.extname(list[i]) === fileType) {
+									//console.log(list[i]);
+									file_fp = path.join(fs_dir, '/' + list[i]);
+									//console.log(file_fp);
+									fs.unlinkSync(file_fp, function(err) {
+										if (err) {
+											console.log(err);
+											return res.status(500).send(err);
+										}
+									})
+								}
+							}
+					});
+					// need to set timeout to delay execution to allow for file delete
+					setTimeout(function() {
+						// delete the directories
+						fs.rmdir(fs_dir, function(err) {
+							if (err) {
+								console.log("failed to remove dir "+fs_dir);
+							}
+							else {
+								fs_dir = path.join(user_data, '/', regnum);
+								fs.rmdir(fs_dir, function(err) {
+									if (err) {
+										// doesn't matter if this is removed
+										console.log("failed to remove dir "+fs_dir);
+									}
+								});
+							}
+						})
+					}, 1000);
+					return res.send(incident);
+				}
+		})
+		
+	});
+	
+	// ======================
+    // GET USER DETAILS =====
+    // ======================
+	app.get('/userDtl', isLoggedIn, function(req,res) {
+			User.find(function (err, user) {	//query all entries
+			// if there are any errors, return the error
+				if (err) {
+					// Note that this error doesn't mean nothing was found,
+					// it means the database had an error while searching, hence the 500 status
+					console.log('Error in getting Users: '+err);
+					res.status(500).send(err)
+				}
+				
+				if (user) {
+					//mask out password field
+					for (var i = 0; i<user.length; i++) {
+						user[i].local.password = "********";
+					}
+					// send the list of all users
+					res.send(user);
+				}
+			})
+		
+	});
+	
+	// =================
+    // DELETE USER =====
+    // =================
+	app.get('/deleteusr', isLoggedIn, function(req,res) {
+		var user = req.query.ur; 
+		//console.log("user = "+user);
+		// find it out and remove!
+		User.findOneAndRemove({ 'local.email' :  user }, function(err, user) {
+						// if there are any errors, return the error
+						if (err) {
+							console.log('Error in getting user for removal: '+err);
+							return res.status(500).send(err);
+						};
+						if (user) {
+							// successfully removed this user
+							return res.send(user);
+						}
+		})
+
 	});
 	
 	// ==========================

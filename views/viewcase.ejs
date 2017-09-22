@@ -5,6 +5,7 @@
 	<meta charset="utf-8" />
 	<link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/bootstrap.min.css"> <!-- load bootstrap css -->
     <link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/font-awesome.min.css"> <!-- load fontawesome -->
+	<link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/style.css"> <!-- load customs style -->
 	<title>View Appraisal Photos</title>
 	<script src="<%= hosturl %>/scripts/bootstrap.min.js"></script>
 </head>
@@ -33,7 +34,7 @@
 <!-- loop over images and render them -->
   <% files.forEach((file) => { %>
    <!--<div id="container"> -->
-   <div class="col-sm-8">
+   <div class="col-sm-6">
         <div class="thumbnail">
 		<img src = <%= file %> alt = "photo placeholder thumbnail">
 		</div>

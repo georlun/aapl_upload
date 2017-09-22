@@ -14,6 +14,7 @@
     "ejs": "^2.5.7",
     "express": "^4.15.4",
     "express-session": "^1.15.5",
+    "generate-password": "^1.3.0",
     "mongoose": "^4.11.7",
     "morgan": "^1.8.2",
     "multer": "^1.3.0",

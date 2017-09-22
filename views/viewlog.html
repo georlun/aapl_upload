@@ -50,6 +50,11 @@
 				Photo
 			</button>
 		</td>
+		<td ng-show="isAdmin(loginUser)">
+			<button type="button" ng-confirm-click="Are you sure to delete this appraisal " row-record="{{row.regnum}}, {{row.date}}" confirmed-click="delete_incident(row.regnum, row.date)" class="btn btn-sm btn-warning">
+				Delete
+			</button>
+		</td>
 	</tr>
 	</tbody>
 </table>

@@ -42,6 +42,8 @@ module.exports = function(passport) {
     function(req, email, password, done) {
 		//console.log("email = " + email);
 		//console.log("pass = " + password);
+		var u_comp = req.body.company;
+		//console.log("comp = " + u_comp);
         // asynchronous
 		// nextTick will preempt the event loop to execute the callback as soon as it's readily available
         // User.findOne wont fire unless data is sent back
@@ -58,7 +60,7 @@ module.exports = function(passport) {
 			
             // check to see if theres already a user with that email
             if (user) {
-				console.log('User already exists: '+user);
+				//console.log('User already exists: '+user);
                 return done(null, false, req.flash('signupMessage', 'That email is already taken.'));
             } else {
 
@@ -70,7 +72,8 @@ module.exports = function(passport) {
                 // set the user's local credentials
                 newUser.local.email    = email;
                 newUser.local.password = generateHash(password);
-				newUser.local.company  = "";
+				//newUser.local.company  = "";
+				newUser.local.company  = u_comp;
 
                 // save the user
                 newUser.save(function(err) {
@@ -79,7 +82,7 @@ module.exports = function(passport) {
                         throw err;
 						return done(null, false, req.flash('signupMessage', 'Error in saving User.'));
 					}
-                    return done(null, newUser, req.flash('signupMessage', 'Successfully registered User.'));
+                    return done(null, newUser, req.flash('signupMessage', 'User: '+email+' successfully registered with password: '+password));
                 });
             }
         });    

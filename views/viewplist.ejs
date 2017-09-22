@@ -5,13 +5,14 @@
 	<meta charset="utf-8" />
 	<link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/bootstrap.min.css"> <!-- load bootstrap css -->
     <link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/font-awesome.min.css"> <!-- load fontawesome -->
+	<link rel="stylesheet" type="text/css" href="<%= hosturl %>/views/css/style.css"> <!-- load customs style -->
 	<title>View Appraisal Photos</title>
 	<script src="<%= hosturl %>/scripts/bootstrap.min.js"></script>
 </head>
 
 <!-- The information between the BODY and /BODY tags is displayed.-->
 <body>
-<div style="padding-left: 40px;">
+<div style="padding-left: 55px;">
 <span><h1>Here are the list of photos for&nbsp;<%= key %></h1></span>
 </div>
 
@@ -19,7 +20,7 @@
 <!-- loop over images and render them -->
   <% files.forEach((file) => { %>
    <!--<div id="container"> -->
-   <div class="col-sm-8">
+   <div class="col-sm-6">
         <div class="thumbnail">
 		<img src = <%= file %> alt = "photo placeholder thumbnail">
 		</div>

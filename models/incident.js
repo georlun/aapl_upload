@@ -11,7 +11,8 @@ var incidentSchema = mongoose.Schema({
         location	: String,
 		sender		: String,
 		ins_comp	: String,
-		senddate	: String
+		senddate	: String,
+		img_id		: [{grid_id: String}]
 
 });
 

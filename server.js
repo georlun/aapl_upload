@@ -10,16 +10,13 @@
 var nPort = process.env.PORT || 8080;
 var express = require('express');
 var app = express();
-var multer = require('multer');
-var fs = require('fs');
-var path = require('path');
 var ejs = require('ejs');
 var logger = require('morgan');
 var mongoose = require('mongoose');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 //SET to use environment variable for path of the user data directory storing images 
-var user_data = process.env.USERDATA;
+//var user_data = process.env.USERDATA;
 
 app.use(logger('dev'));
 app.use(function (req, res, next) { //allow cross origin requests
@@ -48,7 +45,7 @@ No cors required */
 app.set('view engine', 'ejs');  //tell Express we're using EJS
 //app.set('views', __dirname + '/views');  //set path to *.ejs files
 app.use(express.static(__dirname));
-app.use('/apphoto', express.static(user_data)); // mount the photo repository root directory
+//app.use('/apphoto', express.static(user_data)); // mount the photo repository root directory
 app.use(cookieParser()); // read cookies (needed for auth)
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -71,40 +68,6 @@ initPassport(passport); // pass passport for configuration
 
 // routes
 require('./routes.js')(app, passport); // load our routes and pass in our app and fully configured passport
-
-var storage = multer.diskStorage({ //multers disk storage settings
-    destination: function (req, file, cb) {
-		//console.log(req.body);
-		var key=req.body.value1;
-		var date=req.body.value2;
-		var dest_dir = user_data + "/" + key + "/" + date;
-		//console.log("upload dest dir = " + dest_dir);
-        cb(null, dest_dir);
-    },
-    filename: function (req, file, cb) {
-        var datetimestamp = Date.now();
-        cb(null, file.fieldname + '-' + datetimestamp + '.' + file.originalname.split('.')[file.originalname.split('.').length - 1]);
-		//console.log("req object = "+JSON.stringify(req.body));
-		//console.log("file object = "+JSON.stringify(file));
-    }
-});
-var upload = multer({ //multer settings
-    storage: storage
-}).single("imgUpload"); //File key for upload; on a single basis i.e. one file at a time
-//}).array("imgUploader", 3); //Field name and max count
-
-/** API path that will upload the files */
-app.post('/upload', function (req, res) {
-    upload(req, res, function (err) {
-		//console.log(req.body);
-        if (err) {
-            res.json({ error_code: 1, err_desc: err });
-            return res.end("Something went wrong!");
-        }
-        res.json({ error_code: 0, err_desc: null });
-        return res.end("File uploaded sucessfully!.");
-    });
-});
 
 var server = app.listen(nPort, function () {
     var host = server.address().address;

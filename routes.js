@@ -356,8 +356,8 @@ module.exports = function(app, passport) {
 							//sample GridFS JSON: {"_id":"59cb4ecb12c26c1c108d239d","filename":"GS3890-27-09-2017-1506450339432.jpg",
 							//"contentType":"image/jpg","length":4397078,"chunkSize":1024,"uploadDate":"2017-09-27T07:10:09.094Z",
 							//"md5":"2d5c8bee94dd737dac8404914bb78619"}
-							var fid = { "grid_id": file._id };
-							//var fid = { "grid_id": file.filename };
+							//var fid = { "grid_id": file._id };
+							var fid = { "grid_id": file.filename };
 							//console.log("file id: " + JSON.stringify(fid));
 							// write each file id to database
 							Incident.findOneAndUpdate({ 'regnum' :  key, 'date' : date }, {$push: {img_id: fid}}, function(err, incdt) {
@@ -520,6 +520,20 @@ module.exports = function(app, passport) {
 						file_fp = fs_url + incdt.img_id[i].grid_id;
 						files.push(file_fp); //store the file name into the array files
 					};
+					//render respective ejs file in the views directory
+					// need to set timeout to delay execution to allow for directory get
+					setTimeout(function() {
+						pnum = files.length.toString();
+						//console.log("no. of photos: " + pnum);
+						//for(i=0; i<files.length; i++) {
+						//	console.log(files[i]);
+						//};
+						res.render('viewcase', {key: key, date: date, time: time, type: type_desc, pnum: pnum, hosturl: hostUrl, files: files});
+						//res.sendFile(__dirname + "/" + "viewcase.html");
+					}, 1000);
+				}
+				else {
+					return res.send("Non-existing incident/case, the case has been removed by the system administrator.")
 				}
 			}
 		);
@@ -536,17 +550,7 @@ module.exports = function(app, passport) {
 			}
 		});
 	*/
-		//render respective ejs file in the views directory
-		// need to set timeout to delay execution to allow for directory get
-		setTimeout(function() {
-			pnum = files.length.toString();
-			//console.log("no. of photos: " + pnum);
-			//for(i=0; i<files.length; i++) {
-			//	console.log(files[i]);
-			//};
-			res.render('viewcase', {key: key, date: date, time: time, type: type_desc, pnum: pnum, hosturl: hostUrl, files: files});
-			//res.sendFile(__dirname + "/" + "viewcase.html");
-		}, 1000);
+
 	});
 	
 	// =================
@@ -620,8 +624,8 @@ module.exports = function(app, passport) {
 		var conn = mongoose.connection;
 		gfs = Grid(conn.db, mongoose.mongo);
 		
-		gfs.findOne({ _id: f_id }, function (err, file) {
-		//gfs.findOne({ filename: f_id }, function (err, file) {
+		//gfs.findOne({ _id: f_id }, function (err, file) {
+		gfs.findOne({ filename: f_id }, function (err, file) {
 			if (err) {
 				return res.status(400).send(err);
 			}
@@ -633,8 +637,8 @@ module.exports = function(app, passport) {
 			//res.set('Content-Disposition', 'attachment; filename="' + file.filename + '"'); // for saving as attachment
 
 			var readstream = gfs.createReadStream({
-						_id: f_id,
-						//filename: f_id,
+						//_id: f_id,
+						filename: f_id,
 						chunkSize: 1024 * 256
 			});
 
@@ -867,8 +871,8 @@ module.exports = function(app, passport) {
 					
 					for(i=0; i<incident.img_id.length; i++) {
 						//console.log("remove file id: "+incident.img_id[i].grid_id);
-						gfs.remove({ _id: incident.img_id[i].grid_id }, function (err) {
-						//gfs.remove({ filename: incident.img_id[i].grid_id }, function (err) {	
+						//gfs.remove({ _id: incident.img_id[i].grid_id }, function (err) {
+						gfs.remove({ filename: incident.img_id[i].grid_id }, function (err) {	
 										if (err) {
 											return res.status(400).send(err);
 										}

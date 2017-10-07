@@ -79,7 +79,7 @@ module.exports = function(passport) {
                 newUser.save(function(err) {
                     if (err) {
 						console.log('Error in Saving user: '+err);
-                        throw err;
+                        //throw err;
 						return done(null, false, req.flash('signupMessage', 'Error in saving User.'));
 					}
                     return done(null, newUser, req.flash('signupMessage', 'User: '+email+' successfully registered with password: '+password));

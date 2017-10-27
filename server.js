@@ -32,6 +32,8 @@ var configDB = require('./config/database.js');
 mongoose.connect(configDB.url, {
 					useMongoClient: true
 					/* other options */
+					//poolSize: 5,
+					//keepAlive: true
 });
 
 // mongoDB debugger

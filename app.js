@@ -53,8 +53,19 @@ app.controller('downloadCtrl', ['$scope', '$http', '$window', function($scope, $
 */
 app.controller('incidentCtrl', ['$scope', '$http', '$window', function ($scope, $http, $window) {
 	//open a new window for detail list
-	$scope.show_table = function () { 
-		$window.open('/views/viewlog.html', '_blank');
+	$scope.show_table = function () {
+		$http.get('/loginuser')
+		.then( function successCallback(response) {
+			//console.log("response = " + JSON.stringify(response));
+			var loginUser = response.data.username;
+			//console.log("username = " + $scope.loginUser);
+			if (loginUser === undefined) {
+				alert("This page has been expired or its respective user has been logged off... Please login again to continue by refreshing the page");
+			}
+			else {
+				$window.open('/views/viewlog.html', '_blank');
+			}
+		});
 	}
 }]);
 
@@ -62,20 +73,42 @@ app.controller('newuserCtrl', ['$scope', '$http', '$location', '$window', functi
 	
 	$scope.user_signup = function () {
 		
-		var protocol = $location.protocol();
-		var host = $location.host();
-		var port = $location.port();
-		var url_str = protocol +'://'+ host +':'+ port;
-		//console.log("url = ", url_str);
-		$window.open(url_str + '/signup', '_blank');
-
+		$http.get('/loginuser')
+		.then( function successCallback(response) {
+			//console.log("response = " + JSON.stringify(response));
+			var loginUser = response.data.username;
+			//console.log("username = " + $scope.loginUser);
+			if (loginUser === undefined) {
+				alert("This page has been expired or its respective user has been logged off... Please login again to continue by refreshing the page");
+			}
+			else {
+					var protocol = $location.protocol();
+					var host = $location.host();
+					var port = $location.port();
+					var url_str = protocol +'://'+ host +':'+ port;
+					//console.log("url = ", url_str);
+					$window.open(url_str + '/signup', '_blank');
+			}
+		});
 	}
 }]);
 
 app.controller('userlistCtrl', ['$scope', '$http', '$window', function ($scope, $http, $window) {
 	//open a new window for detail list
 	$scope.list_user = function () { 
-		$window.open('/views/viewuser.html', '_blank');
+	
+		$http.get('/loginuser')
+		.then( function successCallback(response) {
+			//console.log("response = " + JSON.stringify(response));
+			var loginUser = response.data.username;
+			//console.log("username = " + $scope.loginUser);
+			if (loginUser === undefined) {
+				alert("This page has been expired or its respective user has been logged off... Please login again to continue by refreshing the page");
+			}
+			else {
+				$window.open('/views/viewuser.html', '_blank');
+			}
+		});
 	}
 }]);
 
@@ -83,15 +116,25 @@ app.controller('chgpassCtrl', ['$scope', '$http', '$location', '$window', functi
 	
 	$scope.change_pass = function () {
 		
-		var protocol = $location.protocol();
-		var host = $location.host();
-		var port = $location.port();
-		var url_str = protocol +'://'+ host +':'+ port;
-		//console.log("url = ", url_str);
-		var user = document.getElementById('loginUr').value;
-		//console.log("user = "+user);
-		$window.open(url_str + '/changepass?ur=' + user + '&mess=', '_blank');
-
+		$http.get('/loginuser')
+		.then( function successCallback(response) {
+			//console.log("response = " + JSON.stringify(response));
+			var loginUser = response.data.username;
+			//console.log("username = " + $scope.loginUser);
+			if (loginUser === undefined) {
+				alert("This page has been expired or its respective user has been logged off... Please login again to continue by refreshing the page");
+			}
+			else {
+					var protocol = $location.protocol();
+					var host = $location.host();
+					var port = $location.port();
+					var url_str = protocol +'://'+ host +':'+ port;
+					//console.log("url = ", url_str);
+					var user = document.getElementById('loginUr').value;
+					//console.log("user = "+user);
+					$window.open(url_str + '/changepass?ur=' + user + '&mess=', '_blank');
+			}
+		});
 	}
 }]);
 
@@ -170,22 +213,27 @@ dtlapp.controller('auditCtrl', ['$scope', '$http', '$location', '$window', funct
 		.then( function successCallback(response) {
 			$scope.loginUser = response.data.username;
 			//console.log("this. login username = " + $scope.loginUser);
+			if ($scope.loginUser === undefined) {
+				alert("The page from which this Appraisal List is called has been expired...")
+			}
+			else {
 			// should take login user entries only, if admin, get all
-			$http.get('/incidentDtl?ur=' + $scope.loginUser)    
-				.then (function successCallback(res) {
-					//console.log('successful res = '+JSON.stringify(res));
-					$scope.incdata = res.data;
-					//console.log('data length = '+res.data.length);
-					if (res.data.length > 0) {
-						$scope.isEmpty = false;
-					} else {
-						$scope.isEmpty = true;
-					};
-					//console.log('empty res = '+$scope.isEmpty);
-				},	function errorCallback(err) {
-					//console.log('DB get list error');
-					alert('DB get error! '+JSON.stringify(err));
-				})
+				$http.get('/incidentDtl?ur=' + $scope.loginUser)    
+					.then (function successCallback(res) {
+						//console.log('successful res = '+JSON.stringify(res));
+						$scope.incdata = res.data;
+						//console.log('data length = '+res.data.length);
+						if (res.data.length > 0) {
+							$scope.isEmpty = false;
+						} else {
+							$scope.isEmpty = true;
+						};
+						//console.log('empty res = '+$scope.isEmpty);
+					},	function errorCallback(err) {
+						//console.log('DB get list error');
+						alert('DB get error! '+JSON.stringify(err));
+					})
+			}
 		}, function errorCallback(err) {
 					//console.log('DB get login user error');
 					alert('DB get error! '+JSON.stringify(err));
@@ -206,7 +254,7 @@ dtlapp.controller('auditCtrl', ['$scope', '$http', '$location', '$window', funct
 	$scope.delete_incident = function(regnum, date) {
 		//console.log("regnum = "+regnum+", date = "+date);
 		//console.log("evaluate delete_incident...");
-		var get_str = "/deleteincdt?rn=" + regnum + "&dd=" + date;
+		var get_str = "/deleteAppr?rn=" + regnum + "&dd=" + date;
 		$http.get(get_str)
 			.then( function successCallback(response) {
 					//console.log("response = " + JSON.stringify(response));

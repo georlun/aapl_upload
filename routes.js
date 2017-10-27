@@ -4,7 +4,8 @@ var path = require('path');
 var multer = require('multer');
 var mongodb = require('mongodb');
 var mongoose = require('mongoose');
-var Grid = require('gridfs-stream');
+var Promise = require('bluebird');
+//var Grid = require('gridfs-stream');
 var bcrypt = require('bcrypt-nodejs');
 var request = require('request');
 var async = require('async');
@@ -12,6 +13,7 @@ var generator = require('generate-password');
 var open = require('opn');            // open is using npm opn()
 var User = require('./models/user');
 var Incident = require('./models/incident');
+var imageData = require('./models/imagedata');
 var configDB = require('./config/database.js');
 //var user_data = process.env.USERDATA;
 
@@ -257,8 +259,8 @@ module.exports = function(app, passport) {
 		destination: function (req, file, cb) {
 			var key=req.body.value1;
 			var date=req.body.value2;
-			//var dest_dir = "./" + key;		// temp file put under app root dir, regnum subdir
-			var dest_dir = "./";				// temp file put under app root dir
+			var dest_dir = "./" + key + "-" + date;		// temp file put under app root dir, regnum + date subdir
+			//var dest_dir = "./";				// temp file put under app root dir
 			//console.log("upload dest dir = " + dest_dir);
 			cb(null, dest_dir);
 		},
@@ -284,28 +286,36 @@ module.exports = function(app, passport) {
 		upload(req, res, function (err) {
 			//console.log("req body: "+JSON.stringify(req.body));
 			//console.log("req files: "+JSON.stringify(req.file));
-			//sample req.file JSON: {"fieldname":"imgUpload","originalname":"image.jpg","encoding":"7bit","mimetype":"image/jpeg",
-			//"destination":"./","filename":"imgUpload-GS3890-26-09-2017-1506428743353.jpg",
-			//"path":"imgUpload-GS3890-26-09-2017-1506428743353.jpg","size":4113115}
+			//console.log("err json: "+err);
+			//sample req.file JSON: {"fieldname":"imgAA","originalname":"image.jpg","encoding":"7bit","mimetype":"image/jpeg",
+			//"destination":"./","filename":"GS3890-02-10-2017-1508315959237.jpg",
+			//"path":"GS3890-02-10-2017-1508315959237.jpg","size":234549}
 			if (err) {
-				res.json({ error_code: 1, err_desc: err });
-				return res.end("Upload went wrong!");
+				//res.json({ error_code: 1, err_desc: err });
+				return res.send(err);
 			}
+			/* This coding for calling postupload directly from upload, not used as now using bluebird for async orchestration
 			var hostUrl = req.protocol + '://' + req.get('host');
 			//res.json({ error_code: 0, err_desc: null });
 			// call postupload to store uploaded file to db via request
 			var url_str = hostUrl + "/postupload?rn=" + req.body.value1 + "&dd=" + req.body.value2 + "&fn=" + req.file.filename;
 			//console.log("requesting get: " + url_str);
+			
 			request
 				.get(url_str)
 				.on('error', function(err) {
 						console.log("postupload error..." + err);
-						return res.end("file upload error, retry later " + err);
+						return res.send(err);
 					})
 				.on('response', function (response) {
-					//console.log("postupload status: " + response.statusCode);
+					console.log("postupload status: " + JSON.stringify(response));
 				});
-			return res.end("File uploaded sucessfully!.");
+			*/
+			/** WARNING: deliberately make server CRASH to simulate upload fail
+			var obj = {"a":"b"};
+			return res.end(obj);
+			*/
+			return res.sendStatus(200);
 		});
 	});
 	
@@ -316,118 +326,88 @@ module.exports = function(app, passport) {
 	app.get('/postupload', function (req, res) {
 		var key = req.query.rn;
 		var date = req.query.dd;
-		var filename = req.query.fn;
-		var i, gfs;
-		var imageDir = "./";
-		//var conn = mongoose.createConnection(configDB.url);
-		var conn = mongoose.connection;
-		//conn.once('open', function () {
-		//	gfs = Grid(conn.db, mongoose.mongo);
-		//});
-		gfs = Grid(conn.db, mongoose.mongo);
+		var upld_tot = req.query.ft;
+		var i, tot_photos, files_array = [];
+		var imageDir = "./" + key + "-" + date;
 		
-		//allow time to finish upload of all files
-		setTimeout(function() {
-		/*	this coding for processing uploaded files on individual basis */
-			// first check if file already exists in the database fs.files
-			gfs.exist({ filename: filename }, function (err, found) {
-				if (err) return res.status(500).send(err);
-				if (found) { 
-					console.log("file: "+filename+" already exists...")
-					return res.end();
+		/* This coding applies Sync ReadDir function to get the list of file */
+		fs.readdirSync(imageDir).forEach(function (file) {
+			var obj = {
+					key: key,
+					date: date,
+					filename: file
 				}
-				else
-				{
-					var imgPath = imageDir + filename;
-					var writestream = gfs.createWriteStream({
-						filename: filename,
-						chunkSize: 1024 * 256,
-						content_type: 'image/jpg'
-					});
-					//console.log("uploaded photo = " + filename);
-					// write using GridFS
-					fs.createReadStream(imgPath).pipe(writestream)
-						.on('error', function (err) {
-								console.log("GridFS file write error " + JSON.stringify(err));
-								return res.status(500).send(err);
-						})
-						.on('close', function (file) {
-							//console.log("completed GridFS file write " + JSON.stringify(file));
-							//sample GridFS JSON: {"_id":"59cb4ecb12c26c1c108d239d","filename":"GS3890-27-09-2017-1506450339432.jpg",
-							//"contentType":"image/jpg","length":4397078,"chunkSize":1024,"uploadDate":"2017-09-27T07:10:09.094Z",
-							//"md5":"2d5c8bee94dd737dac8404914bb78619"}
-							//var fid = { "grid_id": file._id };
-							var fid = { "grid_id": file.filename };
-							//console.log("file id: " + JSON.stringify(fid));
-							// write each file id to database
-							Incident.findOneAndUpdate({ 'regnum' :  key, 'date' : date }, {$push: {img_id: fid}}, function(err, incdt) {
-								if (err) {
-									console.log('Error in find and update Incident: '+err);
-								}
-								if (incdt) {
-									// success write to db, remove temp file
-									fs.unlinkSync(imgPath, function(err) {
-										if (err) {
-											console.log(err);
-											return res.status(500).send(err);
-										}
-									});
-									//console.log("complete update and removal: " + JSON.stringify(fid));
-								}
-							});
-							//conn.db.close();
-							return res.end();
-						});
-				};
-			});
-		/*	this coding for reading a directory for all uploaded files
-			//console.log("photo dir = " + imageDir)
-			fs.readdir(imageDir, function (err, list) {
-				if (err) {
-					console.log("error reading upload dir: " + err);
-					res.json({ error_code: 1, err_desc: err });
-					return res.end();
-				};
-				for(i=0; i<list.length; i++) {
-					//console.log("uploaded photo = " + list[i]);
-					//files.push(list[i]); //store the file name into the array files
-					var imgPath = path.join(imageDir, '/', list[i]);
-					var writestream = gfs.createWriteStream({
-						filename: list[i],
-						chunkSize: 1024 * 256,
-						content_type: 'image/jpg'
-					});
-					console.log("uploaded photo path = " + imgPath);
-					// write using GridFS
-					fs.createReadStream(imgPath).pipe(writestream)
-						.on('error', function (err) {
-								console.log("GridFS file write error " + JSON.stringify(err));
-						})
-						.on('close', function (file) {
-							console.log("completed GridFS file write " + JSON.stringify(file));
-							//sample GridFS JSON: {"_id":"59cb4ecb12c26c1c108d239d","filename":"GS3890-27-09-2017-1506450339432.jpg",
-							//"contentType":"image/jpg","length":4397078,"chunkSize":1024,"uploadDate":"2017-09-27T07:10:09.094Z",
-							//"md5":"2d5c8bee94dd737dac8404914bb78619"}
-							var fid = { "grid_id": file._id };
-							console.log("file id: " + JSON.stringify(fid));
-							// write each file id to database
-							Incident.findOneAndUpdate({ 'regnum' :  key, 'date' : date }, {$push: {img_id: fid}}, function(err, incdt) {
-								if (err) {
-									console.log('Error in find and update Incident: '+err);
-								}
-								if (incdt) {
-									files_id[i] = fid;
-									console.log("push update: " + JSON.stringify(fid));
-								}
-							});
-						});
-				};
-				//conn.db.close();
-				//return res.end("post upload completed...");
-			})
+			files_array.push(obj); //store the file name into the array files
+			//console.log("obj = " + JSON.stringify(obj));
+		});	
+		/* This coding for using async readdir to get the list
+		fs.readdir(imageDir, function (err, list) {
+			if (err) {
+				console.log(err);
+				var result = {status: 500, text: err};
+				return res.send(result)
+			}
+			console.log("total files in temp dir: " + list.length);
+			tot_photos = list.length;
+			for(i=0; i < tot_photos; i++) {
+				var obj = {
+					key: key,
+					date: date,
+					filename: list[i]
+				}
+				files_array.push(obj); //store the file name into the array files
+				//console.log("obj["+i+"] = " + JSON.stringify(obj));
+			};
 		*/
-		}, 1000);
-			
+		tot_photos = files_array.length;		
+		console.log("process array size: " + tot_photos);
+		if (tot_photos == upld_tot)	{
+			//setTimeout(function() {
+				processAsyncArray(files_array, async_postupload_promise).then(function(result) {
+					//console.log("return result = " + JSON.stringify(result));
+					//remove the whole temp directory after all photo files have been successfully inserted
+					
+					setTimeout(function() {
+						if (result.length == tot_photos) {
+							fs.rmdir(imageDir, function(err) {
+								if (err) {
+									// doesn't matter if this is removed
+									console.log("failed to remove dir "+imageDir);
+								}
+							})
+						}
+						else {
+							console.log("WARNING: total number of post upload promises being returned not match amount of photos...")
+						};
+					}, 500);
+					return res.send(result)
+					
+				}, function(reason) {
+						console.log("return reject error = " + JSON.stringify(reason));
+						// oops... issues with post upload, need to clean up the temp directory
+						for(i=0; i < tot_photos; i++) {
+							var imgPath = path.join(imageDir, '/', files_array[i].filename);
+							fs.unlinkSync(imgPath, function(err){ });
+						};
+						setTimeout(function() {
+							fs.rmdir(imageDir, function(err){ });
+						}, 2000);
+						return res.send(reason)
+				});
+			//}, 10);
+		}
+		else {
+			console.log("WARNING: total number of post upload files tally does not match amount of upload photos...");
+			for(i=0; i < tot_photos; i++) {
+				var imgPath = path.join(imageDir, '/', files_array[i].filename);
+				fs.unlinkSync(imgPath, function(err){ });
+			};
+			setTimeout(function() {
+				fs.rmdir(imageDir, function(err){ });
+			}, 2000);
+			return res.send({status: 999, tmpdir: tot_photos});	// special json status code identify unmatched upload and postupload tally
+		}
+		//});
 	});
 
     // =================
@@ -493,19 +473,18 @@ module.exports = function(app, passport) {
 		//var authy = req.query.au;
 		var type_desc, pnum;
 		var fileType = '.jpg',
-			file_fp,
+			img_tag = [],
 			files = [], i;
 		
 		//console.log("auth param = "+authy);
 
 		if (type == 1) { type_desc = "Owner Damage"; } else
-		if (type == 2) { type_desc = "3rd Party Vehicle Damage"; };
+		if (type == 2) { type_desc = "Third Party"; };
 		//console.log("post key = "+key+", loss date is "+date+", time is "+time+", type is "+type_desc);
 		
-		//get the list of jpg files in the image dir
+		//get the list of jpg images
 		var hostUrl = req.protocol + '://' + req.get('host');
-		var fs_url = hostUrl + '/display?image=';
-		//get the list of jpg photos from the database keys
+		/* This coding is for putting base64 images directly in array */	
 		Incident.findOne({ 'regnum' :  key, 'date' : date },  //query
 			function(err, incdt) {		//callback function
 				// if there are any errors, return the error
@@ -517,23 +496,40 @@ module.exports = function(app, passport) {
 				if (incdt) {
 					for(i=0; i<incdt.img_id.length; i++) {
 						//console.log("file id: "+incdt.img_id[i].grid_id);
-						file_fp = fs_url + incdt.img_id[i].grid_id;
-						files.push(file_fp); //store the file name into the array files
+						img_tag.push(incdt.img_id[i].grid_id); //store the image tag into the array
 					};
-					//render respective ejs file in the views directory
-					// need to set timeout to delay execution to allow for directory get
+										
 					setTimeout(function() {
-						pnum = files.length.toString();
-						//console.log("no. of photos: " + pnum);
-						//for(i=0; i<files.length; i++) {
-						//	console.log(files[i]);
-						//};
-						res.render('viewcase', {key: key, date: date, time: time, type: type_desc, pnum: pnum, hosturl: hostUrl, files: files});
-						//res.sendFile(__dirname + "/" + "viewcase.html");
-					}, 1000);
+						if (img_tag.length > 0) {
+							processAsyncArray(img_tag, async_display_photo_promise).then(function(result) {
+								for(i=0; i < result.length; i++) {
+									//console.log("result["+i+"] status: " + result[i].status);
+									if (result[i].status == '200') {
+										files.push(result[i].data);
+									}
+									else
+										if (result[i].status == '404') {
+											files.push("");
+										}
+								};
+								// need to set timeout to delay execution to allow for images push to array
+								setTimeout(function() {
+									pnum = files.length.toString();
+									res.render('viewcase', {key: key, date: date, time: time, type: type_desc, pnum: pnum, hosturl: hostUrl, files: files});
+								}, 100);
+							}, function(reason) {
+								console.log("return reject error = " + JSON.stringify(reason));
+								return res.status(500).send(reason);
+							})
+						}
+						else {
+								pnum = "0";
+								res.render('viewcase', {key: key, date: date, time: time, type: type_desc, pnum: pnum, hosturl: hostUrl, files: files});
+						}
+					}, 200);
 				}
 				else {
-					return res.send("Non-existing incident/case, the case has been removed by the system administrator.")
+					return res.send("Non-existing incident/case, the case has been removed by the system administrator.");
 				}
 			}
 		);
@@ -550,7 +546,6 @@ module.exports = function(app, passport) {
 			}
 		});
 	*/
-
 	});
 	
 	// =================
@@ -561,10 +556,64 @@ module.exports = function(app, passport) {
 	app.get('/photolist', isLoggedIn, function (req, res) {
 		var key = req.query.rn;
 		var date = req.query.dd;
-		var fileType = '.jpg',
-			file_fp,
+		var fileType = '.jpg', pnum,
+			img_tag = [],
 			files = [], i;
 		
+		var hostUrl = req.protocol + '://' + req.get('host');
+		/* This coding is for putting base64 images directly in array */	
+		Incident.findOne({ 'regnum' :  key, 'date' : date },  //query
+			function(err, incdt) {		//callback function
+				// if there are any errors, return the error
+				if (err) {
+					console.log('Error in finding Incident: '+err);
+					return res.status(400).send(err);
+				}
+				
+				if (incdt) {
+					for(i=0; i<incdt.img_id.length; i++) {
+						//console.log("file id: "+incdt.img_id[i].grid_id);
+						img_tag.push(incdt.img_id[i].grid_id); //store the image tag into the array
+					};
+										
+					setTimeout(function() {
+						if (img_tag.length > 0) {
+							processAsyncArray(img_tag, async_display_photo_promise).then(function(result) {
+								for(i=0; i < result.length; i++) {
+									//console.log("result["+i+"] status: " + result[i].status);
+									if (result[i].status == '200') {
+										files.push(result[i].data);
+									}
+									else
+										if (result[i].status == '404') {
+											files.push("");
+										}
+								};
+								// need to set timeout to delay execution to allow for images push to array
+								setTimeout(function() {
+									if (files.length > 0) {
+										pnum = files.length.toString();
+										// send the list of all photos
+										res.render('viewplist', {key: key, hosturl: hostUrl, pnum: pnum, files: files});
+									}
+									else {
+										res.end("No photo to display for this appraisal incident...");
+									}
+								}, 100);
+							}, function(reason) {
+								console.log("return reject error = " + JSON.stringify(reason));
+								return res.status(500).send(reason);
+							})
+						}
+						else {
+								res.end("No photo to display for this appraisal incident...");
+						}
+					}, 200);
+				}
+			}
+		);
+		
+	/** This coding is for displaying images as a direct url from server	
 		var hostUrl = req.protocol + '://' + req.get('host');
 		var fs_url = hostUrl + '/display?image=';
 		//get the list of jpg photos from the database keys
@@ -585,7 +634,8 @@ module.exports = function(app, passport) {
 				}
 			}
 		);
-	/*			
+	*/
+	/** This coding is for reading images from persistent disk storage			
 		var imageDir = user_data + "/" + key + "/" + date;
 		var fs_url = hostUrl + '/apphoto/' + key + '/' + date;
 		//console.log("photo dir = " + imageDir);
@@ -601,16 +651,6 @@ module.exports = function(app, passport) {
 			}
 		});
 	*/
-		// need to set timeout to delay execution to allow for directory get
-		setTimeout(function() {
-			if (files.length > 0) {
-				// send the list of all photos
-				res.render('viewplist', {key: key, hosturl: hostUrl, files: files});
-			}
-			else {
-				res.end("No photo to display for this appraisal incident...");
-			}
-		}, 1000);
 	});
 	
 	// =================
@@ -619,11 +659,38 @@ module.exports = function(app, passport) {
 	app.get('/display', function (req, res) {
 		var f_id = req.query.image;	// containing file name or id
 		//console.log("file id = ", f_id);
-		var gfs;
+		//var gfs;
 		//var conn = mongoose.createConnection(configDB.url);
-		var conn = mongoose.connection;
-		gfs = Grid(conn.db, mongoose.mongo);
+		//var conn = mongoose.connection;
+		//gfs = Grid(conn.db, mongoose.mongo);
 		
+		/* This coding for using mongodb Collection Binary storage to save image files */
+		imageData.findOne({ '_id' :  f_id },  //query
+			function(err, data) {		//callback function
+				// if there are any errors, return the error
+				if (err) {
+					console.log('Error in finding Image Data: '+err);
+					return res.status(400).send(err);
+				}
+				
+				if (data) {
+					res.set('Content-Type', data.contentType);
+					//res.contentType(data.contentType);
+					// convert base64 to raw binary data held in a string
+					var block = data.data.split(";");
+					// raw image data
+					var byteString = block[1].split(",")[1];
+					res.send(new Buffer(byteString, 'base64'));
+					//res.send(data.data);
+				}
+				else {
+					// handle photo not found case
+					res.send("thumbnail photo not found");
+				}
+			}
+		);
+		
+		/* This coding is for using mongodb GridFS storage for saving image files
 		//gfs.findOne({ _id: f_id }, function (err, file) {
 		gfs.findOne({ filename: f_id }, function (err, file) {
 			if (err) {
@@ -649,7 +716,7 @@ module.exports = function(app, passport) {
 						
 			readstream.pipe(res);
 		});
-		
+			
 	/** This is the old version coding which applies to photos storing in persistent disk storage , not mongodb GridFS 
 		//var hostUrl = req.protocol + '://' + req.get('host');
 		//console.log(hostUrl);
@@ -688,12 +755,28 @@ module.exports = function(app, passport) {
     // =================
 	app.get('/delete', function (req, res) {
 		// This API serves as a backdoor to delete files or photos from the GridFS by file id or filename
-		var f_id = req.query.image;	// containing file name or id
+		var f_id = req.query.image;	// containing file name
 		//console.log("file id = ", f_id);
-		var gfs;
-		var conn = mongoose.connection;
-		gfs = Grid(conn.db, mongoose.mongo);
-		
+		//var gfs;
+		//var conn = mongoose.connection;
+		//gfs = Grid(conn.db, mongoose.mongo);
+		imageData.findOne({ 'filename' :  f_id }, function(err, data) {
+				if (err) {
+					return res.status(400).send(err);
+				}
+				else if (!data) {
+					return res.status(404).send('Error on the database lookup for the image file.');
+				}
+				
+				data.remove(function (err) {
+						if (err) {
+							console.log('Error in remove image file: '+err);
+							return res.status(500).send(err);
+						}
+						res.end("file removed...");
+				});
+		});
+		/* This coding is for using mongodb GridFS storage for saving image files
 		gfs.findOne({ filename: f_id }, function (err, file) {
 				if (err) {
 					return res.status(400).send(err);
@@ -709,6 +792,7 @@ module.exports = function(app, passport) {
 					res.end("file removed...");
 				});
 		})
+		*/
 	});
 	
 	// ==================
@@ -724,10 +808,10 @@ module.exports = function(app, passport) {
 		var recpt=req.body.recpt;
 		var sndate=req.body.sndate;
 		var return_str = "post key = "+key+", loss date is "+date+", time is "+time+", type is "+type+", location is "+location+", creator is "+owner+", recipient is "+recpt+", send date is "+sndate;
-		var type_desc;
+		var type_desc, dup_found = false;
 		
 		if (type == 1) { type_desc = "Owner Damage"; } else
-		if (type == 2) { type_desc = "3rd Party Vehicle Damage"; };
+		if (type == 2) { type_desc = "Third Party"; };
 		
 		// create database entry for this incident if it's not a duplicate
         Incident.findOne({ 'regnum' :  key, 'date' : date },  //query
@@ -735,11 +819,13 @@ module.exports = function(app, passport) {
 				// if there are any errors, return the error
 				if (err) {
 					console.log('Error in finding Incident: '+err);
+					res.status(500).send(err)
 				}
 				
 				if (incdt) {
 					//found entry, should not insert new one but update with info from the new record
-					console.log("Found entry = "+incdt.regnum);
+					//console.log("Found entry = "+incdt.regnum);
+					dup_found = true;
 					incdt.time = time;
 					incdt.claimtype = type_desc;
 					incdt.location = location;
@@ -748,7 +834,8 @@ module.exports = function(app, passport) {
 					incdt.senddate = sndate;
 					incdt.save(function(err) {
 						if (err) {
-							console.log('Error in Update incident: '+err);
+							console.log('Error in Update incident: '+JSON.stringify(err));
+							return res.status(500).send(err)
 						}
 					});
 					
@@ -769,24 +856,24 @@ module.exports = function(app, passport) {
 					// save the incident
 					newIncident.save(function(err) {
 						if (err) {
-							console.log('Error in Saving incident: '+err);
-							return res.end("error = " + err);
+							console.log('Error in Saving incident: '+JSON.stringify(err));
+							return res.status(500).send(err)
 						}
 					});
 				}
 		});
-		// create corresponding 'regnum' directory for temporary storage
-		//var case_dir = "./" + key;
+		// create corresponding 'regnum+date' directory for temporary storage
+		var case_dir = "./" + key + "-" + date;
 		//console.log("dest dir = " + case_dir);
-		//if (!fs.existsSync(case_dir)){
-		//		fs.mkdirSync(case_dir, function(err){
-		//						if (err) {
-		//							console.log(err);
-		//							return res.end("error = " + err);
-		//						}
+		if (!fs.existsSync(case_dir)){
+				fs.mkdirSync(case_dir, function(err){
+								if (err) {
+									console.log("make Directory error: "+ case_dir + ", err = " + err);
+									return res.status(500).send(err)
+								}
 								//console.log("Directory " + case_dir + " created successfully!");
-		//					});
-		//};
+							});
+		};
 		//case_dir = case_dir + "/" + date;
 		//console.log("second dest dir = " + case_dir);
 		//if (!fs.existsSync(case_dir)){
@@ -799,7 +886,9 @@ module.exports = function(app, passport) {
 		//					});
 		//};
 		//console.log(return_str);
-		res.end();
+		setTimeout(function() {
+			return res.status(200).json({dup: dup_found});
+		}, 200);
 	});
 	
 	// ==========================
@@ -815,7 +904,7 @@ module.exports = function(app, passport) {
 					// Note that this error doesn't mean nothing was found,
 					// it means the database had an error while searching, hence the 500 status
 					console.log('Error in finding Incident: '+err);
-					res.status(500).send(err)
+					return res.status(500).send(err)
 				}
 				
 				if (incdt) {
@@ -832,7 +921,7 @@ module.exports = function(app, passport) {
 					// Note that this error doesn't mean nothing was found,
 					// it means the database had an error while searching, hence the 500 status
 					console.log('Error in finding Incident: '+err);
-					res.status(500).send(err)
+					return res.status(500).send(err)
 				}
 				//console.log('retrieved = '+JSON.stringify(incdt)+', length = '+incdt.length);
 				if (incdt) {
@@ -845,10 +934,54 @@ module.exports = function(app, passport) {
 		
 	});
 	
-	// ===================
-    // DELETE INCIDENT ===
-    // ===================
-	app.get('/deleteincdt', isLoggedIn, function(req,res) {
+	// ===============================
+    // DELETE INCIDENT from MOBILE ===
+    // ===============================
+	app.get('/deleteincdt', function(req,res) {	// this one has no authentication requirements as it would call from mobile app system
+		var regnum = req.query.rn;
+		var date = req.query.dd;
+		var fileType = '.jpg',
+			file_fp, fs_dir, i;
+			
+			Incident.findOne({ 'regnum': regnum, 'date': date }, function(err, incident) {
+				// if there are any errors, return the error
+				if (err) {
+					console.log('Error in getting incident for removal: '+err);
+					return res.status(500).send(err);
+				};
+				if (incident) {
+					// successfully find this incident
+					// proceed to delete all photos of this incident
+					for(i=0; i<incident.img_id.length; i++) {
+						//console.log("remove file id: "+incident.img_id[i].grid_id);
+						imageData.findOneAndRemove({ '_id' :  incident.img_id[i].grid_id }, function(err, data) {
+								if (err) {
+										return res.status(400).send(err);
+								}
+								else if (!data) {
+									console.log('No image file found for removal...');
+								}
+						})
+					};
+					
+				setTimeout(function() {
+					incident.remove(function (err) {
+						if (err) {
+							console.log('Error in remove incident: '+err);
+							return res.status(500).send(err);
+						}
+					});
+				}, 500);
+					return res.send(incident);
+				}
+			})
+		
+	});
+	
+	// ==================================
+    // DELETE Appraisal by Admin User ===
+    // ==================================
+	app.get('/deleteAppr', isLoggedIn, function(req,res) {
 		var regnum = req.query.rn;
 		var date = req.query.dd;
 		var fileType = '.jpg',
@@ -863,8 +996,21 @@ module.exports = function(app, passport) {
 					return res.status(500).send(err);
 				};
 				if (incident) {
-					// successfully removed this incident
-					// proceed to delete all photos of this incident from the mongodb GridFS
+					// successfully find this incident
+					// proceed to delete all photos of this incident
+					for(i=0; i<incident.img_id.length; i++) {
+						//console.log("remove file id: "+incident.img_id[i].grid_id);
+						imageData.findOneAndRemove({ '_id' :  incident.img_id[i].grid_id }, function(err, data) {
+								if (err) {
+										return res.status(400).send(err);
+								}
+								else if (!data) {
+									console.log('No image file found for removal...');
+								}
+						})
+					};
+					
+				/* This coding is for using mongodb GridFS storage for saving image files
 					var gfs;
 					var conn = mongoose.connection;
 					gfs = Grid(conn.db, mongoose.mongo);
@@ -878,12 +1024,15 @@ module.exports = function(app, passport) {
 										}
 						});
 					};
+				*/
+				setTimeout(function() {
 					incident.remove(function (err) {
 						if (err) {
 							console.log('Error in remove incident: '+err);
 							return res.status(500).send(err);
 						}
 					});
+				}, 500);
 					
 				/* This is the old version coding which applies to photos storing in persistent disk storage , not mongodb GridFS
 					var imageDir = user_data + "/" + regnum + "/" + date;
@@ -930,7 +1079,7 @@ module.exports = function(app, passport) {
 		})
 		
 	});
-	
+		
 	// ======================
     // GET USER DETAILS =====
     // ======================
@@ -941,7 +1090,7 @@ module.exports = function(app, passport) {
 					// Note that this error doesn't mean nothing was found,
 					// it means the database had an error while searching, hence the 500 status
 					console.log('Error in getting Users: '+err);
-					res.status(500).send(err)
+					return res.status(500).send(err)
 				}
 				
 				if (user) {
@@ -1010,7 +1159,7 @@ module.exports = function(app, passport) {
 						async.forEach(incdt.img_id, function (grid, callback2) {
 							//console.log("file id: "+grid.grid_id);
 							//write the get url for express download to destined directory
-							file_fp = 'rn=' + rn + '&dd=' + dt + '&ff=' + grid.grid_id;
+							file_fp = 'rn=' + rn + '&dd=' + dt + '&ff=' + grid.grid_id + '&fn=' + grid.filename;
 							f_selected.push(file_fp); //store the download file id into the array files
 							callback2();
 						}, callback1);
@@ -1097,6 +1246,9 @@ module.exports = function(app, passport) {
     });
 };
 
+// =======================
+// INTERNAL FUNCTIONS ====
+// =======================
 // route middleware to make sure a user is logged in
 function isLoggedIn(req, res, next) {
 	var auth = req.query.au;
@@ -1113,3 +1265,262 @@ function isLoggedIn(req, res, next) {
 		// if they aren't redirect them to the login page
 		res.redirect('/login');
 }
+
+// async function to insert photos to its persistent storage either DB or AWS S3 
+// Generic Async Loop Processing Routine: 
+// it implements 'reduce' pattern to control return of async Promises with 'bluebird' library and capture the series of resolve in result[]
+function processAsyncArray(array, fn) {
+	var results = [];
+	return array.reduce(function(p, item) {
+		// sample p json value: {"isFulfilled":true,"isRejected":false}
+		//console.log("inside reduce array: " + JSON.stringify(item));
+		return p.then(function() {
+			return fn(item).then(function(data) {
+				//console.log("inside reduce array, return value: " + JSON.stringify(data));
+				results.push(data);
+				return results;
+			});
+		});
+	}, Promise.resolve());
+}
+
+function async_postupload_promise(f_item) {
+	return new Promise(function(resolve, reject) {
+			var key = f_item.key;
+			var date = f_item.date;
+			var filename = f_item.filename;
+			var imageDir = "./" + key + "-" + date;
+			var imgPath = path.join(imageDir, '/', filename);
+			//var imgPath = imageDir + filename;	/** WARNING: deliberate to make server failed to read file for failure test, COMMENT IT */
+			var result;
+			//var conn = mongoose.createConnection(configDB.url);
+			//var conn = mongoose.connection;
+			//conn.once('open', function () {
+			//	gfs = Grid(conn.db, mongoose.mongo);
+			//});
+			//gfs = Grid(conn.db, mongoose.mongo);
+		
+			/*	this coding for processing uploaded files on individual basis */
+			// first check if file already exists in the database fs.files
+			//gfs.exist({ filename: filename }, function (err, found) {
+			
+			imageData.findOne({ 'filename' :  filename }, function(err, data) {
+				//if (err) return res.status(500).send(err);
+				if (err) {
+					console.log("read db error...");
+					result = {status: 500, text: err};
+					reject(result);
+				}
+				else
+				{
+					if (data) { 
+						console.log("file: "+data.filename+" already exists...");
+						// duplicate photo, should remove it
+						fs.unlinkSync(imgPath, function(err) {
+							if (err) {
+								console.log('Error in remove duplicate photo file: '+JSON.stringify(err));
+							}
+						});
+						result = {status: 200, text: "OK"};
+						resolve(result);
+					}
+					else
+					{
+						/* this coding for using mongodb Collection Binary storage to save image files */
+						fs.readFile(imgPath, function(err, data) {
+							if (err) {
+								console.log("Error reading file on server! " +JSON.stringify(err));
+								//sample err json: {"errno":-4058,"code":"ENOENT","syscall":"open","path":"D:\\angularJS"}
+								//return res.status(500).send(err);
+								result = {status: 500, text: err};
+								reject(result);
+							}
+							else {
+								var newImage = new imageData();
+								newImage.filename = filename;
+								newImage.contentType = "image/jpeg";
+								//newImage.data = data;
+								// encode file data to base64 encoded string for storage
+								var base64data = new Buffer(data).toString('base64');
+								//console.log(base64data);
+								newImage.data = 'data:image/jpeg;base64,' + base64data;
+								//console.log("saving file: " + filename);
+								newImage.save(function(err, record) {
+									if (err) {
+										console.log('Error in Saving imageData: code: '+err.code+', index: '+err.index+', description: '+err.errmsg);
+										//return res.end("error code: "+err.code);
+										result = {status: err.code, text: err.errmsg};
+										reject(result);
+									}
+									else
+									{
+										//console.log('saved imageData record: '+ record._id + ', ' + record.filename + ', ' + record.contentType);
+										var fid = { "grid_id": record._id, "filename": filename };
+										Incident.findOneAndUpdate({ 'regnum' :  key, 'date' : date }, {$push: {img_id: fid}}, function(err, incdt) {
+											if (err) {
+												console.log('Error in find and update Incident: '+JSON.stringify(err));
+												result = {status: 500, text: err};
+												reject(result);
+											}
+											if (incdt) {
+												// success write to db, remove temp file
+												fs.unlinkSync(imgPath, function(err) {
+													if (err) {
+														console.log('Error in remove upload temp file: '+JSON.stringify(err));
+													}
+												});
+												//console.log("complete update and removal: " + JSON.stringify(fid));
+												result = {status: 200, text: "OK"};
+												resolve(result);
+											}
+											else
+											{
+												console.log('non-existent Incident record...');
+												result = {status: 500, text: "No matching incident record in DB"};
+												reject(result);
+											}
+										});
+									}
+								});
+							}
+						});
+					}
+					
+					/* this coding for using mongodb GridFS storage to save image files
+					var imgPath = imageDir + filename;
+					var writestream = gfs.createWriteStream({
+						filename: filename,
+						chunkSize: 1024 * 256,
+						content_type: 'image/jpg'
+					});
+					//console.log("uploaded photo = " + filename);
+					// write using GridFS
+					fs.createReadStream(imgPath).pipe(writestream)
+						.on('error', function (err) {
+								console.log("GridFS file write error " + JSON.stringify(err));
+								return res.status(500).send(err);
+						})
+						.on('close', function (file) {
+							//console.log("completed GridFS file write " + JSON.stringify(file));
+							//sample GridFS JSON: {"_id":"59cb4ecb12c26c1c108d239d","filename":"GS3890-27-09-2017-1506450339432.jpg",
+							//"contentType":"image/jpg","length":4397078,"chunkSize":1024,"uploadDate":"2017-09-27T07:10:09.094Z",
+							//"md5":"2d5c8bee94dd737dac8404914bb78619"}
+							//var fid = { "grid_id": file._id };
+							var fid = { "grid_id": file.filename };
+							//console.log("file id: " + JSON.stringify(fid));
+							// write each file id to database
+							Incident.findOneAndUpdate({ 'regnum' :  key, 'date' : date }, {$push: {img_id: fid}}, function(err, incdt) {
+								if (err) {
+									console.log('Error in find and update Incident: '+err);
+								}
+								if (incdt) {
+									// success write to db, remove temp file
+									fs.unlinkSync(imgPath, function(err) {
+										if (err) {
+											console.log(err);
+											return res.status(500).send(err);
+										}
+									});
+									//console.log("complete update and removal: " + JSON.stringify(fid));
+								}
+							});
+							//conn.db.close();
+							return res.end();
+						});
+					*/
+				}
+			});
+		/*	this coding for reading a directory for all uploaded files
+			//console.log("photo dir = " + imageDir)
+			fs.readdir(imageDir, function (err, list) {
+				if (err) {
+					console.log("error reading upload dir: " + err);
+					res.json({ error_code: 1, err_desc: err });
+					return res.end();
+				};
+				for(i=0; i<list.length; i++) {
+					//console.log("uploaded photo = " + list[i]);
+					//files.push(list[i]); //store the file name into the array files
+					var imgPath = path.join(imageDir, '/', list[i]);
+					var writestream = gfs.createWriteStream({
+						filename: list[i],
+						chunkSize: 1024 * 256,
+						content_type: 'image/jpg'
+					});
+					console.log("uploaded photo path = " + imgPath);
+					// write using GridFS
+					fs.createReadStream(imgPath).pipe(writestream)
+						.on('error', function (err) {
+								console.log("GridFS file write error " + JSON.stringify(err));
+						})
+						.on('close', function (file) {
+							console.log("completed GridFS file write " + JSON.stringify(file));
+							//sample GridFS JSON: {"_id":"59cb4ecb12c26c1c108d239d","filename":"GS3890-27-09-2017-1506450339432.jpg",
+							//"contentType":"image/jpg","length":4397078,"chunkSize":1024,"uploadDate":"2017-09-27T07:10:09.094Z",
+							//"md5":"2d5c8bee94dd737dac8404914bb78619"}
+							var fid = { "grid_id": file._id };
+							console.log("file id: " + JSON.stringify(fid));
+							// write each file id to database
+							Incident.findOneAndUpdate({ 'regnum' :  key, 'date' : date }, {$push: {img_id: fid}}, function(err, incdt) {
+								if (err) {
+									console.log('Error in find and update Incident: '+err);
+								}
+								if (incdt) {
+									files_id[i] = fid;
+									console.log("push update: " + JSON.stringify(fid));
+								}
+							});
+						});
+				};
+				//conn.db.close();
+				//return res.end("post upload completed...");
+			})
+		*/
+	});
+}
+
+function async_display_photo_promise(f_id) {
+	return new Promise(function(resolve, reject) {
+		var result;
+		/* This coding for using mongodb Collection Binary storage to save image files */
+		imageData.findOne({ '_id' :  f_id },  //query
+			function(err, data) {		//callback function
+				// if there are any errors, return the error
+				if (err) {
+					console.log('Error in finding Image Data: '+err);
+					result = {status: 500, text: err};
+					reject(result);
+				}
+				else {
+					if (data) {
+						result = {status: 200, data: data.data};
+						resolve(result);
+					}
+					else {
+						// handle photo not found case
+						result = {status: 404, data: "thumbnail photo not found"};
+						resolve(result);
+					}
+				}
+			}
+		)
+	})
+}
+
+// function to encode file data to base64 encoded string
+function base64_encode(file) {
+    // read binary data
+    var bitmap = fs.readFileSync(file);
+    // convert binary data to base64 encoded string
+    return new Buffer(bitmap).toString('base64');
+}
+
+// function to create file from base64 encoded string
+function base64_decode(base64str, file) {
+    // create buffer object from base64 encoded string, it is important to tell the constructor that the string is base64 encoded
+    var bitmap = new Buffer(base64str, 'base64');
+    // write buffer to file
+    fs.writeFileSync(file, bitmap);
+    console.log('******** File created from base64 encoded string ********');
+}
+

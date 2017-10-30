@@ -6,69 +6,67 @@
 	<link rel="stylesheet" type="text/css" href="views/css/bootstrap.min.css"> <!-- load bootstrap css -->
     <link rel="stylesheet" type="text/css" href="views/css/font-awesome.min.css"> <!-- load fontawesome -->
 	<link rel="stylesheet" type="text/css" href="views/css/angular-datepicker.css">
+	<link rel="stylesheet" type="text/css" href="views/css/style.css">
 	<title>Appraisal Associates Home</title>
 	<script src="scripts/angular.min.js"></script>
 	<script src="scripts/angular-datepicker.js"></script>
 	<script src="app.js" type="text/javascript"></script>
 </head>
 
-<style>
-body {
-		background-image: url("views/images/background/crashcar3.jpg");
-		background-repeat: no-repeat;
-		background-position: right top;
-		background-size: auto;
-}
-</style>
-
-<!-- Site under construction is displayed.-->
 <body ng-app="aaplwebapp" ng-controller="userCtrl">
-<div class="container">
-<div class="row">
-<div class="col-sm-4" align="left" style="padding-top:30px; padding-left:0;">
+    <row>
+      <div class="col-lg-3 col-sm-12 left">
+		<div class="container">
+		<div class="row">
+		<div class="col-sm-4" align="left" style="padding-top:30px; padding-left:0;">
 			<h3>Appraisal Associates Pte Ltd.</h3>
-</div>
-</div>
+		</div>
+		</div>
 
-<div class="row">
-<div class="col-sm-4" align="left" style="padding-left:0;">
+		<div class="row">
+		<div class="col-sm-4" align="left" style="padding-left:0;">
 			<h3>Customer Portal</h3>
-</div>
-</div>
-<br>
-<div class="row">
-<div class="col-sm-4 input-lg" style="white-space:nowrap; padding-left:0;">
-	<label for="loginUr">User:</label>
-    <input type="text" id="loginUr" style="border: none; border-color: transparent; " readonly >
-</div>
-</div>
-<br>
+		</div>
+		</div>
+		<br>
+		<div class="row">
+		<div class="col-sm-4 input-lg" style="white-space:nowrap; padding-left:0;">
+			<label for="loginUr">User:</label>
+			<input type="text" id="loginUr" style="border: none; border-color: transparent; " readonly >
+		</div>
+		</div>
+		<br>
 
-<div ng-show="isAdmin(loginUser)">
-<div class="col-sm-4 input-group" ng-controller="newuserCtrl">
-	<button class="btn btn-lg btn-success" ng-click="user_signup()">Create User</button>
-</div>
-<br>
-<div class="col-sm-4 input-group" ng-controller="userlistCtrl">
-	<button class="btn btn-lg btn-basic" ng-click="list_user()">User Maintenance</button>
-</div>
-</div>
-<br>
-<div class="col-sm-4 input-group" ng-controller="chgpassCtrl">
-	<button class="btn btn-lg btn-primary" ng-click="change_pass()">Change Password</button>
-</div>
-<br>
-<div class="col-sm-4 input-group" ng-controller="incidentCtrl">
-	<button class="btn btn-lg btn-info" ng-click="show_table()">Appraisals</button>
-</div>
-<br>
-<div class="col-sm-4 input-group">
-	<form action="/logout">
-	<button type="submit" class="btn btn-lg btn-warning">Log Off</button>
-	</form>
-</div>
-</div>
+		<div ng-show="isAdmin(loginUser)">
+		<div class="col-sm-4 input-group" ng-controller="newuserCtrl">
+			<button class="btn btn-lg btn-success" ng-click="user_signup()">Create User</button>
+		</div>
+		<br>
+		<div class="col-sm-4 input-group" ng-controller="userlistCtrl">
+			<button class="btn btn-lg btn-basic" ng-click="list_user()">User Maintenance</button>
+		</div>
+		</div>
+		<br>
+		<div class="col-sm-4 input-group" ng-controller="chgpassCtrl">
+			<button class="btn btn-lg btn-primary" ng-click="change_pass()">Change Password</button>
+		</div>
+		<br>
+		<div class="col-sm-4 input-group" ng-controller="incidentCtrl">
+			<button class="btn btn-lg btn-info" ng-click="show_table()">Appraisals</button>
+		</div>
+		<br>
+		<div class="col-sm-4 input-group">
+			<form action="/logout">
+			<button type="submit" class="btn btn-lg btn-warning">Log Off</button>
+			</form>
+		</div>
+		</div>
+		<br><br>
+		<p style="text-align: center;">&copy; 2017 Appraisal Associates Pte Ltd. Software Version 1.5</p>
+      </div>
+      <div class="col-lg-9 col-sm-12 right">
+		<img src = "views/images/background/crashcar3.jpg"/>
+      </div>
+    </row>
 </body>
-<br><br>
-<p style="padding-left:15px;">&copy; 2017 Appraisal Associates Pte Ltd. Software Version 1.5</p> 
 </html>
